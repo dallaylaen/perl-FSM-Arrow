@@ -8,13 +8,9 @@ use warnings;
 
 FSM::Arrow - Declarative inheritable generic state machine.
 
-=head1 VERSION
-
-Version 0.01
-
 =cut
 
-our $VERSION = 0.0202;
+our $VERSION = 0.0203;
 
 =head1 DESCRIPTION
 
@@ -51,7 +47,7 @@ and B<instance> which holds the current state and possibly more data.
 	$sm->handle_event( "bar" ); # returns "Here we go", state = final
 	$sm->handle_event( "baz" ); # returns undef, state = final
 
-	$sm->isa("FSM::Arrow::Context"); # true
+	$sm->isa("FSM::Arrow::Instance"); # true
 	$sm->schema; # returns a FSM::Arrow object
 
 B<NOTE> Even though sm_state subs ("handlers") look like methods, one may
@@ -121,7 +117,7 @@ sub _sm_init_schema {
 		no strict 'refs';         ## no critic
 		no warnings 'redefine';   ## no critic
 
-		push @{ $caller.'::'.'ISA' }, 'FSM::Arrow::Context';
+		push @{ $caller.'::'.'ISA' }, 'FSM::Arrow::Instance';
 		*{ $caller.'::'.'schema' } = $schema_getter;
 
 		$sm;
@@ -133,7 +129,7 @@ sub _sm_init_schema {
 A state machine instance class, or B<$instance> hereafter,
 MUST exhibit the following properties for the machine to work correctly.
 
-C<$instance> must be a descendant of L<FSM::Arrow::Context> class.
+C<$instance> must be a descendant of L<FSM::Arrow::Instance> class.
 This is enforced by the first use of sm_init or sm_state.
 
 C<$instance->scheme()> method must be present.
@@ -155,7 +151,7 @@ must be named C<new()>, and must accept C<new(schema => $object)> parameters
 resulting in that very object being returned by C<scheme> method.
 
 All of these methods are implemented in exactly that way
-in FSM::Arrow::Context under assumption
+in FSM::Arrow::Instance under assumption
 that self is a blessed hash and keys C<state> and C<schema> are available.
 
 If Moose is used, no additional care has to be taken (unless these methods
@@ -195,13 +191,13 @@ provided that it follows CONTRACT (see above).
 	};
 
 	package My::Context;
-	use parent qw(FSM::Arrow::Context);
+	use parent qw(FSM::Arrow::Instance);
 
 =head1 METHODS
 
 =cut
 
-use FSM::Arrow::Context;
+use FSM::Arrow::Instance;
 
 =head2 new( %args )
 
@@ -210,7 +206,7 @@ Args may include:
 =over
 
 =item * instance_class - the class the machine instances belong to.
-Default is FSM::Arrow::Context;
+Default is FSM::Arrow::Instance;
 
 =item * initial_state - inintial machine state.
 Default is the first state defined by add_state();
@@ -222,7 +218,7 @@ Default is the first state defined by add_state();
 sub new {
 	my ($class, %args) = @_;
 
-	$args{instance_class} ||= 'FSM::Arrow::Context';
+	$args{instance_class} ||= 'FSM::Arrow::Instance';
 
 	my $self = bless {
 		instance_class => $args{instance_class},

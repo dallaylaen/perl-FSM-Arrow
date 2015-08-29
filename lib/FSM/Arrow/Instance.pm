@@ -1,11 +1,11 @@
 use strict;
 use warnings;
 
-package FSM::Arrow::Context;
+package FSM::Arrow::Instance;
 
 =head1 NAME
 
-FSM::Arrow::Context - FMS::Arrow state machine instance.
+FSM::Arrow::Instance - FMS::Arrow state machine instance.
 
 =head1 DESCRIPTION
 
@@ -35,7 +35,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.02;
+our $VERSION = 0.0201;
 
 =head2 new( %args )
 

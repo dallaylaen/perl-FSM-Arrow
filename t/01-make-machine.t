@@ -17,7 +17,7 @@ my $machine = $schema->spawn;
 
 like ( $schema->id, qr(FSM::Arrow), "id present");
 
-is( ref $machine, 'FSM::Arrow::Context', "Machine instance spawn ok");
+is( ref $machine, 'FSM::Arrow::Instance', "Machine instance spawn ok");
 is( $machine->state, 'empty', "first state = initial state");
 
 my $ret = $machine->handle_event("42");
