@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0205;
+our $VERSION = 0.0206;
 
 =head1 DESCRIPTION
 
@@ -99,6 +99,8 @@ use Storable qw(dclone); # would rather use Clone, but is it ubiquitous?
 use parent qw(Exporter);
 our @EXPORT_OK = qw(sm_state sm_init);
 our %EXPORT_TAGS = ( class => [ 'sm_state', 'sm_init' ] );
+
+our @CARP_NOT = qw(FSM::Arrow::Instance);
 
 use FSM::Arrow::Instance;
 
@@ -438,28 +440,42 @@ sub add_state {
 		unless @_%2;
 	my ($self, $name, $code, %args) = @_;
 
+	# check input thoroughly
 	croak __PACKAGE__."->add_state: state name must be true string"
 		unless $name and !ref $name;
 	# TODO code should allow string 'FINAL' for final states
 	croak __PACKAGE__."->add_state: handler must be a subroutine"
-		unless ref $code and UNIVERSAL::isa( $code, 'CODE' );
+		unless $code and _is_sub($code);
 	croak __PACKAGE__."->add_state: state $name already defined"
 		if $self->{state_lock}{ $name } and !$args{override};
+	_is_sub( $args{$_} )
+		or croak __PACKAGE__."->add_state: $_ callback must be a subroutine"
+		for qw(on_enter on_leave);
+	croak __PACKAGE__."->add_state: next must be array of true strings"
+		if( $args{next}
+			&& ( ref $args{next} ne 'ARRAY'
+			|| grep { !$_ || ref $_ } @{ $args{next} }));
 
+	# now update self
 	$self->{state_handler}{$name} = $code;
 	$self->{initial_state} = $name
 		if $args{initial} or !defined $self->{initial_state};
-	foreach my $cb (qw(on_enter on_leave)) {
-		defined $args{$cb} or next;
-		croak __PACKAGE__."->add_state: $cb must be a subroutine"
-			unless ref $args{$cb} and UNIVERSAL::isa( $args{$cb}, 'CODE' );
-		$self->{ $cb }{ $name } = $args{$cb};
-	};
+	$args{$_} and $self->{$_}{ $name } = $args{$_}
+		for qw(on_enter on_leave);
+	$args{next} and $self->{transitions}{ $name }{$_} = 1
+		for @{ $args{next} };
 
-	# Lock state. Note: this is released on clone
+	# Lock state. Note: this is released when object is cloned
+	#    to allow state overrides
 	$self->{state_lock}{$name}++;
 
 	return $self;
+};
+
+sub _is_sub {
+	my $ref = shift;
+
+	return (!defined $ref || (ref $ref && UNIVERSAL::isa( $ref, 'CODE' )));
 };
 
 =head2 spawn()
@@ -500,6 +516,9 @@ sub handle_event {
 	if ($new_state) {
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
 			unless exists $self->{state_handler}{ $new_state };
+		$self->_croak("Illegal transition '$old_state'->'$new_state'(forbidden)")
+			if exists $self->{transitions}{ $old_state }
+				and !$self->{transitions}{ $old_state }{ $new_state };
 		# TODO check legal transitions if available
 		$self->{on_leave}{$old_state}->(
 				$instance, $event, $old_state, $new_state )

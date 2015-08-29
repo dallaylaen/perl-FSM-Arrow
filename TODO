@@ -12,6 +12,7 @@ WISHLIST
 0.02	TST psgi example
 0.02	REF	rename Context->Instance
 0.02	TST not only happy path unit tests
+0.02	DEV inspection tools
 
 DISCUSSION
 0.02	Extract FSM::Arrow::Schema?
