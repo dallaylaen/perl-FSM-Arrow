@@ -15,3 +15,6 @@ TODO
 t/02-declarative-magic.t
 t/03-decl-moose.t
 t/04-decl-fields.t
+t/07-decl-fail.t
+t/05-decl-parent.t
+t/06-decl-parent-badparent.t

@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0203;
+our $VERSION = 0.0204;
 
 =head1 DESCRIPTION
 
@@ -36,7 +36,15 @@ and B<instance> which holds the current state and possibly more data.
 
 	sm_state final => sub {};
 
-	# later in calliing code
+	package My::State::Machine::Better;
+
+	use FSM::Arrow qw(:class);
+
+	sm_init parent => 'My::State::Machine';
+
+	sm_state final => sub { '', "This state is final" };
+
+	# later in calling code
 	use My::State::Machine;
 
 	my $sm = My::State::Machine->new;
@@ -56,20 +64,40 @@ define real methods with exactly the same names.
 =cut
 
 use Carp;
+use Storable qw(dclone); # would rather use Clone, but is it ubiquitous?
 use parent qw(Exporter);
-our @EXPORT_OK = qw(sm_state);
-our %EXPORT_TAGS = ( class => [ 'sm_state' ] );
+our @EXPORT_OK = qw(sm_state sm_init);
+our %EXPORT_TAGS = ( class => [ 'sm_state', 'sm_init' ] );
 
-my %sm_schema;
+use FSM::Arrow::Instance;
 
 =head2 sm_init %options
 
 Initialize state machine schema with %options. See new() below.
-This may be omitted.
+This call may be omitted.
+
+options may include:
+
+=over
+
+=item * initial_state => 'state name'.
+If not given, the first sm_state definition is used for initial state.
+
+=item * parent => 'Class::Name'.
+If given, class is loaded just like use parent (...) would do.
+After that, state definitions are copied into current class.
+
+B<NOTE> Parent class MUST also be set up using FSM::Arrow declarative interface.
+
+B<NOTE> Only one parent may be supplied.
+
+=back
 
 sm_init MUST be called no more than once, and before ANY sm_state calls.
 
 =cut
+
+my %sm_schema;
 
 sub sm_init (@) { ## no critic
 	croak "sm_init: FATAL: Odd number of arguments"
@@ -80,7 +108,29 @@ sub sm_init (@) { ## no critic
 	croak "sm_init: FATAL: SM schema already initialized"
 		if exists $sm_schema{$caller};
 
-	__PACKAGE__->_sm_init_schema($caller, @_);
+	my %args = @_;
+	if ($args{parent} and !ref $args{parent}) {
+		my $parent = $args{parent};
+
+		# try loading parent if schema not present
+		if (!exists $sm_schema{$parent}) {
+			my $file = $parent;
+			$file =~ s{::}{/}g;
+			$file .= ".pm";
+			require $file;
+
+			croak "sm_init: parent $parent is not FSM::Arrow a state machine"
+				unless exists $sm_schema{$parent};
+		};
+
+		$args{parent} = $sm_schema{$parent};
+		if (!$caller->isa($parent)) {
+			no strict 'refs'; ## no critic
+			push @{ $caller.'::ISA' }, $parent;
+		}
+	};
+
+	__PACKAGE__->_sm_init_schema($caller, %args);
 };
 
 =head2 sm_state 'name' => CODEREF($self, $event), %options;
@@ -197,8 +247,6 @@ provided that it follows CONTRACT (see above).
 
 =cut
 
-use FSM::Arrow::Instance;
-
 =head2 new( %args )
 
 Args may include:
@@ -218,6 +266,10 @@ Default is the first state defined by add_state();
 sub new {
 	my ($class, %args) = @_;
 
+	if (my $parent = delete $args{parent}) {
+		return $parent->clone( %args );
+	};
+
 	$args{instance_class} ||= 'FSM::Arrow::Instance';
 
 	my $self = bless {
@@ -228,6 +280,39 @@ sub new {
 
 	$self->{id} ||= $self->generate_id;
 	return $self;
+};
+
+=head2 clone( %options )
+
+Create a copy SM scema object.
+
+Cloned state handlers can then be overridden by add_state.
+
+Options are the same as for new(), except for parent which is forbidden.
+
+=cut
+
+sub clone {
+	my ($self, %args) = @_;
+
+	$self->_croak("parent option given to clone()")
+		if exists $args{parent};
+
+	my $new = (ref $self)->new(
+		instance_class => $self->instance_class,
+		initial_state  => $self->initial_state,
+		%args,
+	);
+
+	$new->{$_} = _shallow_copy($self->{$_})
+		for qw(state_handler);
+
+	return $new;
+};
+
+sub _shallow_copy {
+	my $hash = shift;
+	return { %$hash };
 };
 
 =head2 id()
@@ -253,6 +338,14 @@ sub initial_state {
 	return $_[0]->{initial_state};
 };
 
+=head2 instance_class()
+
+=cut
+
+sub instance_class {
+	return $_[0]->{instance_class};
+};
+
 =head2 add_state( 'name' => CODE($instance, $event), %options )
 
 Define a new state.
@@ -271,13 +364,30 @@ No options are defined yet, but they may be added in the future.
 
 Self is returned (can be chained).
 
+Trying to add existing state would fail
+unless the schema is a clone of another schema.
+
 =cut
 
 sub add_state {
+	croak __PACKAGE__."->add_state: odd number of arguments"
+		unless @_%2;
 	my ($self, $name, $code, %args) = @_;
 
-	$self->{states}->{$name} = $code;
+	croak __PACKAGE__."->add_state: state name must be true string"
+		unless $name and !ref $name;
+	# TODO code should allow string 'FINAL' for final states
+	croak __PACKAGE__."->add_state: handler must be a subroutine"
+		unless ref $code and UNIVERSAL::isa( $code, 'CODE' );
+	croak __PACKAGE__."->add_state: state $name already defined"
+		if $self->{state_lock}{ $name } and !$args{override};
+
+	$self->{state_handler}{$name} = $code;
 	$self->{initial_state} = $name unless defined $self->{initial_state};
+
+	# Lock state. Note: this is released on clone
+	$self->{state_lock}{$name}++;
+
 	return $self;
 };
 
@@ -312,14 +422,14 @@ sub handle_event {
 	my ($self, $instance, $event) = @_;
 
 	my $old_state = $instance->state;
-	my $code = $self->{states}{ $old_state };
+	my $code = $self->{state_handler}{ $old_state };
 
 	my ($new_state, $ret) = $code->( $instance, $event );
 
 	# TODO on_leave
 	if ($new_state) {
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
-			unless exists $self->{states}{ $new_state };
+			unless exists $self->{state_handler}{ $new_state };
 		# TODO check legal transitions if available
 
 		$instance->set_state( $new_state );
