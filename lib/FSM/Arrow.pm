@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0204;
+our $VERSION = 0.0205;
 
 =head1 DESCRIPTION
 
@@ -58,8 +58,39 @@ and B<instance> which holds the current state and possibly more data.
 	$sm->isa("FSM::Arrow::Instance"); # true
 	$sm->schema; # returns a FSM::Arrow object
 
-B<NOTE> Even though sm_state subs ("handlers") look like methods, one may
-define real methods with exactly the same names.
+=head1 USAGE
+
+A statement in one's package:
+
+    use FSM::Arrow qw(:class);
+
+ - would import static prototyped functions sm_init and sm_state into
+the calling package.
+
+On the first usage of either, the following happens:
+
+=over
+
+=item * The calling package becomes descendant of FSM::Arrow::Instance;
+
+=item * The calling package gets C<schema> method which returns
+a FSM::Arrow object;
+
+=item * The calling package inherits C<state>, C<set_state>, and C<new> methods
+with obvious semantics (see CONTRACT below);
+
+=item * The calling package also inherits C<handle_event( $event )> method
+which is the whole point of this.
+
+=back
+
+=head2 handle_event( $event )
+
+Feeds event to the current state's handler. If the handler returns
+a transition, state is undated accordingly. Return value is also determined
+by handler.
+
+See C<sm_state> below.
 
 =cut
 
@@ -133,13 +164,46 @@ sub sm_init (@) { ## no critic
 	__PACKAGE__->_sm_init_schema($caller, %args);
 };
 
-=head2 sm_state 'name' => CODEREF($self, $event), %options;
+=head2 sm_state 'name' => CODE($self, $event), %options;
 
-Create a new state machine state. See add_state() below.
+Define a new state.
+
+'name' MUST be a unique true string.
+
+CODE MUST be a subroutine which accepts two parameters:
+state machine instance and incoming event.
+
+CODE MUST return next state name followed by an arbitrary return value, both
+of which may be omitted.
+
+Next state MUST be either a false value, which means no change,
+or a valid state name added via sm_state as well.
+
+Whenever handle_event is called, it passes its argument to CODE
+and returns the second returned value.
+
+%options may include:
+
+=over
+
+=item * initial => 1 - force this state to be initial.
+
+=item * on_enter => sub->( $self, $event, $old_state, $new_state )
+Whenever state is entered, call the sub.
+
+=item * on_leave => sub->( $self, $event, $old_state, $new_state )
+Whenever state is entered, call the sub.
+
+B<NOTE> Returning a false value will not trigger on_enter and on_leave,
+however, returning current state will.
+
+=back
 
 B<NOTE> even though CODEREF looks a lot like a method,
 no method with such name is actually created and it is safe to have one.
 See CONTRACT below.
+
+See also add_state() below.
 
 =cut
 
@@ -284,7 +348,7 @@ sub new {
 
 =head2 clone( %options )
 
-Create a copy SM scema object.
+Create a copy of SM schema object.
 
 Cloned state handlers can then be overridden by add_state.
 
@@ -383,7 +447,14 @@ sub add_state {
 		if $self->{state_lock}{ $name } and !$args{override};
 
 	$self->{state_handler}{$name} = $code;
-	$self->{initial_state} = $name unless defined $self->{initial_state};
+	$self->{initial_state} = $name
+		if $args{initial} or !defined $self->{initial_state};
+	foreach my $cb (qw(on_enter on_leave)) {
+		defined $args{$cb} or next;
+		croak __PACKAGE__."->add_state: $cb must be a subroutine"
+			unless ref $args{$cb} and UNIVERSAL::isa( $args{$cb}, 'CODE' );
+		$self->{ $cb }{ $name } = $args{$cb};
+	};
 
 	# Lock state. Note: this is released on clone
 	$self->{state_lock}{$name}++;
@@ -426,14 +497,17 @@ sub handle_event {
 
 	my ($new_state, $ret) = $code->( $instance, $event );
 
-	# TODO on_leave
 	if ($new_state) {
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
 			unless exists $self->{state_handler}{ $new_state };
 		# TODO check legal transitions if available
-
+		$self->{on_leave}{$old_state}->(
+				$instance, $event, $old_state, $new_state )
+			if $self->{on_leave}{$old_state};
 		$instance->set_state( $new_state );
-		# TODO on_enter
+		$self->{on_enter}{$new_state}->(
+				$instance, $event, $old_state, $new_state )
+			if $self->{on_enter}{$new_state};
 	};
 
 	return $ret;

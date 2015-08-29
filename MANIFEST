@@ -18,3 +18,4 @@ t/04-decl-fields.t
 t/07-decl-fail.t
 t/05-decl-parent.t
 t/06-decl-parent-badparent.t
+t/08-on-enter-on-leave.t
