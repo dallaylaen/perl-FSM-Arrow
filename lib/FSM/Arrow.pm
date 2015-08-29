@@ -14,7 +14,7 @@ Version 0.01
 
 =cut
 
-our $VERSION = 0.02;
+our $VERSION = 0.0201;
 
 =head1 DESCRIPTION
 
@@ -24,25 +24,6 @@ and asynchronous apps.
 State machine is represented by a
 B<schema> which defines handler for each state
 and B<instance> which holds the current state and possibly more data.
-
-=head1 SYNOPSIS
-
-    use FSM::Arrow;
-
-    my $schema = FSM::Arrow->new( instance_class => 'My::Context' );
-	$schema->add_state( "name" => sub { ... }, next => [ 'more', 'states' ] );
-	# ... more or the same
-
-	# much later
-	my $instance = $schema->spawn;
-	while (<>) {
-		my $reply = $instance->handle_event($_);
-		print "$reply\n";
-		last if $instance->is_final;
-	};
-
-	package My::Context;
-	use parent qw(FSM::Arrow::Context);
 
 =head1 DECLARATIVE MOOSE-LIKE INTERFACE
 
@@ -110,6 +91,10 @@ sub sm_init (@) { ## no critic
 
 Create a new state machine state. See add_state() below.
 
+B<NOTE> even though CODEREF looks a lot like a method,
+no method with such name is actually created and it is safe to have one.
+See CONTRACT below.
+
 =cut
 
 sub sm_state ($$@) { ## no critic
@@ -143,11 +128,72 @@ sub _sm_init_schema {
 	};
 };
 
+=head1 CONTRACT
+
+A state machine instance class, or B<$instance> hereafter,
+MUST exhibit the following properties for the machine to work correctly.
+
+C<$instance> must be a descendant of L<FSM::Arrow::Context> class.
+This is enforced by the first use of sm_init or sm_state.
+
+C<$instance->scheme()> method must be present.
+Its return value must be the same C<FSM::Arrow> object
+throughout the instance lifetime.
+
+C<$instance->set_state($scalar)> method must be present.
+
+C<$instance->state()> method must be present.
+Its return value must be the last value given to C<$instance->set_state>,
+or C<$instance->scheme->initial_state> if C<set_state> was never called.
+
+$instance->handle_event($event) method must be left intact, or call
+C<$instance->scheme->handle_event($instance, $event)>
+at some point if redefined.
+
+Additionally, if used with OO interface (see below), the constructor
+must be named C<new()>, and must accept C<new(schema => $object)> parameters
+resulting in that very object being returned by C<scheme> method.
+
+All of these methods are implemented in exactly that way
+in FSM::Arrow::Context under assumption
+that self is a blessed hash and keys C<state> and C<schema> are available.
 
 =head1 OBJECT-ORIENTED INTERFACE
 
-=cut
+One may use FSM::Arrow directly, if needed
+- that is, create state machine schemas, spawn instances, and process events.
 
+Declarative interface is actually syntactic sugar over this one.
+
+The state machine is separated into
+B<schema> which carries state definitions and metadata
+and B<instance> which stores schema reference and the current state.
+
+A custom instance class may be defined,
+provided that it follows CONTRACT (see above).
+
+=head1 SYNOPSIS
+
+    use FSM::Arrow;
+
+    my $schema = FSM::Arrow->new( instance_class => 'My::Context' );
+	$schema->add_state( "name" => sub { ... }, next => [ 'more', 'states' ] );
+	# ... more or the same
+
+	# much later
+	my $instance = $schema->spawn;
+	while (<>) {
+		my $reply = $instance->handle_event($_);
+		print "$reply\n";
+		last if $instance->is_final;
+	};
+
+	package My::Context;
+	use parent qw(FSM::Arrow::Context);
+
+=head1 METHODS
+
+=cut
 
 use FSM::Arrow::Context;
 
