@@ -14,7 +14,7 @@ Version 0.01
 
 =cut
 
-our $VERSION = 0.0201;
+our $VERSION = 0.0202;
 
 =head1 DESCRIPTION
 
@@ -157,6 +157,12 @@ resulting in that very object being returned by C<scheme> method.
 All of these methods are implemented in exactly that way
 in FSM::Arrow::Context under assumption
 that self is a blessed hash and keys C<state> and C<schema> are available.
+
+If Moose is used, no additional care has to be taken (unless these methods
+are overridden).
+
+If C<use fields> is used, adding C<state> and C<schema> to the fields list
+is required.
 
 =head1 OBJECT-ORIENTED INTERFACE
 

@@ -16,3 +16,5 @@ t/01-make-machine.t
 lib/FSM/Arrow/Context.pm
 TODO
 t/02-declarative-magic.t
+t/03-decl-moose.t
+t/04-decl-fields.t
