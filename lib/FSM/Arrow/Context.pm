@@ -35,7 +35,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.0102;
+our $VERSION = 0.02;
 
 =head2 new( %args )
 

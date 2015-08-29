@@ -1,6 +1,16 @@
+ROADMAP
 
 WISHLIST
-0.01	DOC Contract
-0.01	API Declarative magic
+0.01	DOC contract
+0.02	API inheritance
+0.02	API on_entry callback
+0.02	API on_leave callback
+0.02	API restricted transitions (state1 => [state2, state4])
+0.02	API final states (can accept no more events)
+0.02	DEV debugging primitives
+0.02	TST anyevent example
+0.02	TST psgi example
+0.02	REF	rename Context->Instance
 
-
+DISCUSSION
+0.02	Extract FSM::Arrow::Schema?

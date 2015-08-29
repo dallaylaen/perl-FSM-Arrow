@@ -1,5 +1,9 @@
 Revision history for FSM-Arrow
 
-0.01    Date/time
+0.02    Sat Aug 29 2015
+		API Added basic OO interface (can create machines, switch state)
+		API Added declarative Moose-like interface.
+
+0.01    Sat Aug 29 2015
         First version, released on an unsuspecting world.
 
