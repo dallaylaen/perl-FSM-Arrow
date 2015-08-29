@@ -14,7 +14,7 @@ Version 0.01
 
 =cut
 
-our $VERSION = 0.0101;
+our $VERSION = 0.0102;
 
 =head1 DESCRIPTION
 
@@ -44,15 +44,110 @@ and B<instance> which holds the current state and possibly more data.
 	package My::Context;
 	use parent qw(FSM::Arrow::Context);
 
-=head1 EXPORT
+=head1 DECLARATIVE MOOSE-LIKE INTERFACE
 
-Declarative part - when it's done.
+	package My::State::Machine;
 
-=head1 SUBROUTINES/METHODS
+	use FSM::Arrow qw(:class);
+
+	sm_state initial => sub {
+		my ($self, $event) = @_;
+
+		return final => 'Here we go'
+			if $event =~ bar;
+	};
+
+	sm_state final => sub {};
+
+	# later in calliing code
+	use My::State::Machine;
+
+	my $sm = My::State::Machine->new;
+
+	print $sm->state; # initial
+
+	$sm->handle_event( "foo" ); # returns undef, state = initial
+	$sm->handle_event( "bar" ); # returns "Here we go", state = final
+	$sm->handle_event( "baz" ); # returns undef, state = final
+
+	$sm->isa("FSM::Arrow::Context"); # true
+	$sm->schema; # returns a FSM::Arrow object
+
+B<NOTE> Even though sm_state subs ("handlers") look like methods, one may
+define real methods with exactly the same names.
 
 =cut
 
 use Carp;
+use parent qw(Exporter);
+our @EXPORT_OK = qw(sm_state);
+our %EXPORT_TAGS = ( class => [ 'sm_state' ] );
+
+my %sm_schema;
+
+=head2 sm_init %options
+
+Initialize state machine schema with %options. See new() below.
+This may be omitted.
+
+sm_init MUST be called no more than once, and before ANY sm_state calls.
+
+=cut
+
+sub sm_init (@) { ## no critic
+	croak "sm_init: FATAL: Odd number of arguments"
+		if @_%2;
+
+	my $caller = caller;
+
+	croak "sm_init: FATAL: SM schema already initialized"
+		if exists $sm_schema{$caller};
+
+	__PACKAGE__->_sm_init_schema($caller, @_);
+};
+
+=head2 sm_state 'name' => CODEREF($self, $event), %options;
+
+Create a new state machine state. See add_state() below.
+
+=cut
+
+sub sm_state ($$@) { ## no critic
+	croak "sm_state: FATAL: Odd number of arguments"
+		if @_%2;
+	my ($name, $handler, @options) = @_;
+
+	my $caller = caller;
+
+	my $schema = __PACKAGE__->_sm_init_schema($caller);
+	$schema->add_state( $name => $handler, @options );
+};
+
+sub _sm_init_schema {
+	my ($class, $caller, @args) = @_;
+
+	# memoize
+	return $sm_schema{ $caller } ||= do {
+		my $sm = $class->new( instance_class => $caller, @args );
+
+		my $schema_getter = sub { $sm };
+
+		# Now magic - alter target package
+		no strict 'refs';         ## no critic
+		no warnings 'redefine';   ## no critic
+
+		push @{ $caller.'::'.'ISA' }, 'FSM::Arrow::Context';
+		*{ $caller.'::'.'schema' } = $schema_getter;
+
+		$sm;
+	};
+};
+
+
+=head1 OBJECT-ORIENTED INTERFACE
+
+=cut
+
 
 use FSM::Arrow::Context;
 
@@ -97,6 +192,17 @@ Unless given explicitly to new(), defaults to generate_id() output.
 
 sub id {
 	return $_[0]->{id};
+};
+
+=head2 initial_state()
+
+Returns initial state. Defaults to first added state,
+but may be overridden in constructor.
+
+=cut
+
+sub initial_state {
+	return $_[0]->{initial_state};
 };
 
 =head2 add_state( 'name' => CODE($instance, $event), %options )

@@ -35,7 +35,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.01;
+our $VERSION = 0.0102;
 
 =head2 new( %args )
 
@@ -81,7 +81,7 @@ Returns current state name.
 
 sub state {
 	my $self = shift;
-	return $self->{state};
+	return $self->{state} ||= $self->schema->initial_state;
 };
 
 =head2 set_state( $name )

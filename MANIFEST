@@ -15,3 +15,4 @@ xt/pod.t
 t/01-make-machine.t
 lib/FSM/Arrow/Context.pm
 TODO
+t/02-declarative-magic.t
