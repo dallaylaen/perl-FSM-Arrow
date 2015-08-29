@@ -14,36 +14,35 @@ Version 0.01
 
 =cut
 
-our $VERSION = 0.01;
+our $VERSION = 0.0101;
 
 =head1 DESCRIPTION
 
-This module provides a state machine implementation.
-Each state is a subroutine that receives context and event,
-and returns the name of the next state.
-Context is a special class included in this package (see below).
-Event can be anything.
+This module provides a state machine intended for web services
+and asynchronous apps.
+
+State machine is represented by a
+B<schema> which defines handler for each state
+and B<instance> which holds the current state and possibly more data.
 
 =head1 SYNOPSIS
 
     use FSM::Arrow;
 
-    my $schema = FSM::Arrow->new( context => 'My::Context' );
+    my $schema = FSM::Arrow->new( instance_class => 'My::Context' );
 	$schema->add_state( "name" => sub { ... }, next => [ 'more', 'states' ] );
 	# ... more or the same
 
 	# much later
-	my $machine = $schema->spawn;
+	my $instance = $schema->spawn;
 	while (<>) {
-		my $reply = $machine->handle_event($_);
+		my $reply = $instance->handle_event($_);
 		print "$reply\n";
-		last if $machine->is_final;
+		last if $instance->is_final;
 	};
 
 	package My::Context;
 	use parent qw(FSM::Arrow::Context);
-
-=head1
 
 =head1 EXPORT
 
@@ -53,6 +52,8 @@ Declarative part - when it's done.
 
 =cut
 
+use Carp;
+
 use FSM::Arrow::Context;
 
 =head2 new( %args )
@@ -61,7 +62,7 @@ Args may include:
 
 =over
 
-=item * context - the class the machine instances belong to.
+=item * instance_class - the class the machine instances belong to.
 Default is FSM::Arrow::Context;
 
 =item * initial_state - inintial machine state.
@@ -74,18 +75,43 @@ Default is the first state defined by add_state();
 sub new {
 	my ($class, %args) = @_;
 
-	$args{context} ||= 'FSM::Arrow::Context';
+	$args{instance_class} ||= 'FSM::Arrow::Context';
 
 	my $self = bless {
-		context_class => $args{context},
+		instance_class => $args{instance_class},
 		initial_state => $args{initial_state},
+		id => $args{id},
 	}, $class;
+
+	$self->{id} ||= $self->generate_id;
 	return $self;
 };
 
-=head2 add_state( 'name' => CODE, %options )
+=head2 id()
+
+Returns state machine schema unique identifier.
+
+Unless given explicitly to new(), defaults to generate_id() output.
+
+=cut
+
+sub id {
+	return $_[0]->{id};
+};
+
+=head2 add_state( 'name' => CODE($instance, $event), %options )
 
 Define a new state.
+
+'name' MUST be a unique true string.
+
+CODE MUST be a subroutine which accepts two parameters - instance and event.
+
+CODE MUST return next state name followed by an arbitrary return value, both
+of which may be omitted.
+
+Next state MUST be either a false value, which means no change,
+or a valid state name added via add_state as well.
 
 No options are defined yet, but they may be added in the future.
 
@@ -112,36 +138,64 @@ state() is set to initial_state. schema() is set to self.
 sub spawn {
 	my $self = shift;
 
-	my $instance = $self->{context_class}->new( schema => $self );
+	my $instance = $self->{instance_class}->new( schema => $self );
 	$instance->set_state($self->{initial_state});
 	return $instance;
 };
 
-=head2 handle_event( $context, $event )
+=head2 handle_event( $instance, $event )
 
-Process event based on $context->state and state definition.
+Process event based on $instance->state and state definition.
 Adjust state accordingly.
 
 Return is determined by state handler.
 
-This is normally called as $context->handle_event( $event ) and not directly.
+This is normally called as $instance->handle_event( $event ) and not directly.
 
 =cut
 
 sub handle_event {
-	my ($self, $context, $event) = @_;
+	my ($self, $instance, $event) = @_;
 
-
-	my $old_state = $context->state;
+	my $old_state = $instance->state;
 	my $code = $self->{states}{ $old_state };
 
-	my ($new_state, $ret) = $code->( $context, $event );
-	$context->set_state( $new_state ) if $new_state;
+	my ($new_state, $ret) = $code->( $instance, $event );
+
+	# TODO on_leave
+	if ($new_state) {
+		$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
+			unless exists $self->{states}{ $new_state };
+		# TODO check legal transitions if available
+
+		$instance->set_state( $new_state );
+		# TODO on_enter
+	};
 
 	return $ret;
 };
 
+sub _croak {
+	croak $_[0]->id.": $_[1]";
+};
 
+=head2 generate_id()
+
+Returns an unique id containing at least schema and instance class refs.
+
+B<NOTE> This is normally NOT called directly.
+
+=cut
+
+my $id;
+sub generate_id {
+	my $self = shift;
+
+	my $schema = ref $self;
+	my $instance = $self->{instance_class};
+
+	return "$schema<$instance>#".++$id;
+};
 
 =head1 AUTHOR
 
