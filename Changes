@@ -1,5 +1,12 @@
 Revision history for FSM-Arrow
 
+0.03	Sun Aug 30 2015
+		API Add on_enter, on_leave callbacks
+		API Add restricted transitions (next => [...])
+		DOC Add API contract, generally more docs
+		API Add SM inheritance
+		More tests, more minor options
+
 0.02    Sat Aug 29 2015
 		API Added basic OO interface (can create machines, switch state)
 		API Added declarative Moose-like interface.
