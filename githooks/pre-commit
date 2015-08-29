@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# function to stop commit
+die () {
+  echo >&2 "  ***  Commit aborted: " "$1"
+  exit 1
+}
+
+FAIL=''
+append_fail () {
+  FAIL=`printf "%s%s - %s \n" "$FAIL" "$1" "$2"`
+}
+
+# find files affected by commit
+
+files=`(git diff --cached --name-only --diff-filter=A; git diff --cached --name-only) |\
+  egrep '\.cgi$|\.pl$|\.t$|\.pm$' | sort -u`
+
+# check selected files
+for i in $files; do
+  # skip deleted files
+  [ -f "$i" ] || continue
+
+  echo "$i"
+  perl -Ilib -wc "$i" || append_fail "$i" "Syntax error"
+#  perl -wne '/\t/ and exit 1' "$i"|| append_fail "$i" "Tabs in file"
+  perl -wne '/\s\n/ and exit 1' "$i" || append_fail "$i" "Spaces at EOL"
+done 
+
+for i in `echo "$files" | grep 'lib/.*\.pm$'`; do 
+  [ -f "$i" ] || continue
+  echo "module $i"
+  perl -Mwarnings=FATAL,all -Mstrict -Ilib -w "$i" ||\
+    append_fail "$i" "Module won't run in strict mode"
+  perlcritic "$i" || append_fail "$i" "Perl critic"
+  git diff --cached $i | grep '^+.*\$VERSION' || append_fail "$i" "No version change"
+done
+
+# echo "FAIL=$FAIL" 
+[ -z "$FAIL" ] || die "Some files had errors: 
+$FAIL"
+
+# make sure tests pass
+perl Makefile.PL || die "Makefile.PL failed"
+make || die "Make failed"
+make test || die "Tests fail, use TODO or fix"
+prove -Ilib xt || die "Author tests fail, fix"
+
+# make sure MANIFEST is consistent
+MISSING=`git ls-files | grep -v '^\.' | perl -wne \
+    'BEGIN { use ExtUtils::Manifest qw(maniread);\
+    $hash = maniread(); };\
+    chomp; print " $_" unless exists $hash->{$_}; '`
+
+[ -z "$MISSING" ] ||\
+    die "Found in git, but not in MANIFEST:$MISSING"
+
+# die "test" 
