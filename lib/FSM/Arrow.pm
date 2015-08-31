@@ -10,16 +10,37 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.03;
+our $VERSION = 0.0301;
 
 =head1 DESCRIPTION
 
 This module provides a state machine intended for web services
 and asynchronous apps.
 
-State machine is represented by a
-B<schema> which defines handler for each state
-and B<instance> which holds the current state and possibly more data.
+The usage is as follows:
+
+=over
+
+=item * Define state machine states and transitions
+as (state_name, event_handler(), %options) tuples
+using object-oriented or declarative interface;
+
+The handler interface can be described as following pseudocode:
+
+    my ($next_state, $return_value) = CODE->($machine_instance, $event);
+
+Event format and content is at the users discretion - those may be special
+objects or plain strings (say one wants a parser).
+
+Same goes for return values.
+
+=item * Create a state object from that definition. Multiple independent
+instances of the same machine may exist;
+
+=item * Feed events to machine via handle_event() method,
+which will switch machine's state and return arbitrary data.
+
+=back
 
 =head1 DECLARATIVE MOOSE-LIKE INTERFACE
 
