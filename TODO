@@ -2,10 +2,22 @@ ROADMAP
 
 WISHLIST
 0.02	API final states (can accept no more events)
-0.02	DEV debugging primitives
+0.02	DEV debugging primitives (on_state_change)
 0.02	TST anyevent example
 0.02	TST psgi example
-0.02	DEV inspection tools
+0.02	DEV inspection tools (list_states, get_state_properties)
+0.03 	TST push-down parser example (JSON?)
+0.03	TST some benchmarks
+0.03	API event filter - preprocess ALL events before sending to handlers
+0.03	TST ad-hoc parser example (aka ini file)
+0.03	DEV state graph object, stringify
+0.03	API per machine stats (now many in which state) (do we need it? )
+0.03	API state redefine properties w/o changing sub
 
 DISCUSSION
 0.02	Extract FSM::Arrow::Schema?
+0.03	Extract State object? (Will kill perf)
+0.03	Short-circuit transitions? 
+		(i.e. next state gets the same event immediately)
+0.03	All-state transitions? (e.g. disconnect on a phone call)
+0.03	Chained handlers? (i.e. handler1 returned nothing => check 2 & so on)

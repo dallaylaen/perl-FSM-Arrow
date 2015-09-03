@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0301;
+our $VERSION = 0.0302;
 
 =head1 DESCRIPTION
 
@@ -196,8 +196,8 @@ Define a new state.
 CODE MUST be a subroutine which accepts two parameters:
 state machine instance and incoming event.
 
-CODE MUST return next state name followed by an arbitrary return value, both
-of which may be omitted.
+CODE MUST return next state name followed by an arbitrary return value,
+both of which MAY be omitted.
 
 Next state MUST be either a false value, which means no change,
 or a valid state name added via sm_state as well.
@@ -211,11 +211,28 @@ and returns the second returned value.
 
 =item * initial => 1 - force this state to be initial.
 
+B<NOTE> Uniqueness of initial declaration is not checked,
+but this may change in the future.
+For now, the LAST such option overrides the previous ones.
+
+=item * final => 1 - this state is final.
+
+Any outgoing transitions will be ignored, however,
+second return value from handler will still be returned by handle_event.
+
+=item * next => [ state, state ... ]
+
+Whitelist possible transitions. Attempt to violate will die.
+Not allowed in a final state.
+
 =item * on_enter => sub->( $self, $event, $old_state, $new_state )
-Whenever state is entered, call the sub.
+
+Whenever state is entered, call this sub.
 
 =item * on_leave => sub->( $self, $event, $old_state, $new_state )
-Whenever state is entered, call the sub.
+
+Whenever state is left, call this sub.
+Not allowed in final state.
 
 B<NOTE> Returning a false value will not trigger on_enter and on_leave,
 however, returning current state will.
@@ -447,7 +464,7 @@ of which may be omitted.
 Next state MUST be either a false value, which means no change,
 or a valid state name added via add_state as well.
 
-No options are defined yet, but they may be added in the future.
+See C<sm_state> above for list of options.
 
 Self is returned (can be chained).
 
@@ -477,14 +494,28 @@ sub add_state {
 			&& ( ref $args{next} ne 'ARRAY'
 			|| grep { !$_ || ref $_ } @{ $args{next} }));
 
+	# final state has some restrictions...
+	if ($args{final}) {
+		my @extra = grep { defined $args{$_} } qw(on_leave next);
+		croak __PACKAGE__
+			."->add_state: argument(s) @extra forbidden in a final state"
+				if @extra;
+	};
+
+
 	# now update self
+	# NOTE we MUST override ALL options
+	# just in case we're redefining an older state.
+	# Except for callbacks which may stay.
 	$self->{state_handler}{$name} = $code;
 	$self->{initial_state} = $name
 		if $args{initial} or !defined $self->{initial_state};
-	$args{$_} and $self->{$_}{ $name } = $args{$_}
+	$self->{final_state}{$name} = $args{final} ? 1 : 0;
+	$self->{transitions}{ $name } = $args{next}
+		? _array_to_hash( $args{next} )
+		: undef;
+	exists $args{$_} and $self->{$_}{ $name } = $args{$_}
 		for qw(on_enter on_leave);
-	$args{next} and $self->{transitions}{ $name }{$_} = 1
-		for @{ $args{next} };
 
 	# Lock state. Note: this is released when object is cloned
 	#    to allow state overrides
@@ -493,10 +524,19 @@ sub add_state {
 	return $self;
 };
 
+# return true for undef OR anything callable
 sub _is_sub {
 	my $ref = shift;
 
 	return (!defined $ref || (ref $ref && UNIVERSAL::isa( $ref, 'CODE' )));
+};
+
+# reverse of keys
+sub _array_to_hash {
+	my $list = shift;
+	my %hash;
+	$hash{$_} = 1 for @$list;
+	\%hash;
 };
 
 =head2 spawn()
@@ -534,11 +574,11 @@ sub handle_event {
 
 	my ($new_state, $ret) = $code->( $instance, $event );
 
-	if ($new_state) {
+	if ($new_state and !$self->{final_state}{$old_state}) {
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
 			unless exists $self->{state_handler}{ $new_state };
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(forbidden)")
-			if exists $self->{transitions}{ $old_state }
+			if $self->{transitions}{ $old_state }
 				and !$self->{transitions}{ $old_state }{ $new_state };
 		# TODO check legal transitions if available
 		$self->{on_leave}{$old_state}->(
