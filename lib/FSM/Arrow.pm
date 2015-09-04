@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0302;
+our $VERSION = 0.0303;
 
 =head1 DESCRIPTION
 
@@ -227,7 +227,9 @@ Not allowed in a final state.
 
 =item * on_enter => sub->( $self, $event, $old_state, $new_state )
 
-Whenever state is entered, call this sub.
+Whenever state is entered via handle_event, call this sub.
+
+B<NOTE> on_enter is NOT called when new() or set_state() is called.
 
 =item * on_leave => sub->( $self, $event, $old_state, $new_state )
 
@@ -613,6 +615,77 @@ sub generate_id {
 	my $instance = $self->{instance_class};
 
 	return "$schema<$instance>#".++$id;
+};
+
+=head1 DEBUGGING/INSPECTION PRIMITIVES
+
+=head2 list_states
+
+List all defined states. initial_state is guaranteed to come first.
+
+=head2 get_state( $name )
+
+Get hashref with state properties. State can be recreated as
+
+    $sm->add_state( delete $ref->{name}, delete $ref->{handler}, %$ref );
+
+See C<sm_state> above.
+
+Dies if no such state exists.
+
+=cut
+
+sub list_states {
+	my $self = shift;
+
+	my $first = $self->initial_state;
+	return $first, grep { $_ ne $first } keys %{ $self->{state_handler} };
+};
+
+sub get_state {
+	my ($self, $name) = @_;
+
+	$self->_croak("get_state(): No state named '$name'")
+		unless exists $self->{state_handler}{ $name };
+
+	my $next = $self->{transitions}{ $name };
+	$next = $next ? [ keys %$next ] : undef;
+
+	return {
+		name       => $name,
+		handler    => $self->{state_handler}{ $name },
+		final      => $self->{final_state}{ $name } ? 1 : 0,
+		next       => $next,
+		on_enter   => $self->{on_enter}{$name},
+		on_leave   => $self->{on_leave}{$name},
+		initial    => $self->initial_state eq $name ? 1 : 0,
+	};
+};
+
+=head2 pretty_print
+
+B<EXPERIMENTAL>
+
+Display state machine in human-readable way.
+This will change over time.
+
+Returns a multi-line string.
+
+=cut
+
+sub pretty_print {
+	my $self = shift;
+
+	my @states = $self->list_states;
+	return join "\n", map {
+		join "",
+			$_->{initial} ? "*" : " ",
+			$_->{name},
+			$_->{final}   ? "[x]" :
+				$_->{next}    ? "->[@{$_->{next}}]" : "->*",
+	} map {
+		$self->get_state( $_ );
+	} @states;
 };
 
 =head1 AUTHOR

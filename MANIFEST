@@ -22,3 +22,4 @@ t/08-on-enter-on-leave.t
 t/09-decl-runtime-fail.t
 t/10-decl-final.t
 t/11-decl-carp.t
+t/12-get-state.t

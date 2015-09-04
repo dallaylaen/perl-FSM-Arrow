@@ -1,11 +1,9 @@
 ROADMAP
 
 WISHLIST
-0.02	API final states (can accept no more events)
 0.02	DEV debugging primitives (on_state_change)
 0.02	TST anyevent example
 0.02	TST psgi example
-0.02	DEV inspection tools (list_states, get_state_properties)
 0.03 	TST push-down parser example (JSON?)
 0.03	TST some benchmarks
 0.03	API event filter - preprocess ALL events before sending to handlers
@@ -13,6 +11,7 @@ WISHLIST
 0.03	DEV state graph object, stringify
 0.03	API per machine stats (now many in which state) (do we need it? )
 0.03	API state redefine properties w/o changing sub
+0.03	DOC More rationale & basic SM discussion (?)
 
 DISCUSSION
 0.02	Extract FSM::Arrow::Schema?
