@@ -35,7 +35,11 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.03;
+our $VERSION = 0.0301;
+
+# If event handler ever dies, don't end up blaming Arrow.
+# Blame caller of handle_event instead.
+our @CARP_NOT = qw(FSM::Arrow);
 
 =head2 new( %args )
 
