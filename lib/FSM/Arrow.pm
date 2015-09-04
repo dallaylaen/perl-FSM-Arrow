@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0304;
+our $VERSION = 0.0305;
 
 =head1 DESCRIPTION
 
@@ -187,22 +187,22 @@ sub sm_init (@) { ## no critic
 	__PACKAGE__->_sm_init_schema($caller, %args);
 };
 
-=head2 sm_state 'name' => CODE($self, $event), %options;
+=head2 sm_state 'name' => HANDLER($self, $event), %options;
 
 Define a new state.
 
 'name' MUST be a unique true string.
 
-CODE MUST be a subroutine which accepts two parameters:
+HANDLER MUST be a subroutine which accepts two parameters:
 state machine instance and incoming event.
 
-CODE MUST return next state name followed by an arbitrary return value,
+HANDLER MUST return next state name followed by an arbitrary return value,
 both of which MAY be omitted.
 
 Next state MUST be either a false value, which means no change,
 or a valid state name added via sm_state as well.
 
-Whenever handle_event is called, it passes its argument to CODE
+Whenever handle_event is called, it passes its argument to HANDLER
 and returns the second returned value.
 
 %options may include:
@@ -232,7 +232,7 @@ If it dies, the state is NOT entered.
 
 B<NOTE> This happens immediately after processing the previous state.
 Otherwise this code could have been just placed in the beginning of the
-CODE itself.
+HANDLER itself.
 
 B<NOTE> $self->state is still the old state during execution of this callback.
 
@@ -246,16 +246,16 @@ Not allowed in final state.
 
 B<NOTE> on_leave is ALWAYS called before on_enter.
 
-B<NOTE> Returning a false value from CODE will not
+B<NOTE> Returning a false value from HANDLER will not
 trigger on_enter and on_leave,
 however, returning current state will trigger both.
 
 =back
 
-During execution of CODE, on_enter, and on_leave, $_ is localized
+During execution of HANDLER, on_enter, and on_leave, $_ is localized
 and represents the event being processed.
 
-B<NOTE> even though CODE looks a lot like a method,
+B<NOTE> even though HANDLER looks a lot like a method,
 no method with such name is actually created and it is safe to have one.
 See CONTRACT below.
 
@@ -466,26 +466,23 @@ sub instance_class {
 	return $_[0]->{instance_class};
 };
 
-=head2 add_state( 'name' => CODE($instance, $event), %options )
+=head2 add_state( 'name' => HANDLER($instance, $event), %options )
 
 Define a new state.
 
-'name' MUST be a unique true string.
-
-CODE MUST be a subroutine which accepts two parameters - instance and event.
+'name' MUST be a unique true string, HANDLER MUST be a subroutine.
 
 CODE MUST return next state name followed by an arbitrary return value, both
 of which may be omitted.
 
-Next state MUST be either a false value, which means no change,
-or a valid state name added via add_state as well.
+See C<sm_state> above for detailed description of name, HANDLER,
+and available options.
 
-See C<sm_state> above for list of options.
+Self is returned (so this method can be chained).
 
-Self is returned (can be chained).
-
-Trying to add existing state would fail
-unless the schema is a clone of another schema.
+Trying to add a state more than once would cause exception,
+UNLESS this is FIRST redefinition of an existing state
+in a clone of another machine.
 
 =cut
 
