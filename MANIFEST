@@ -23,3 +23,4 @@ t/09-decl-runtime-fail.t
 t/10-decl-final.t
 t/11-decl-carp.t
 t/12-get-state.t
+t/13-decl-underscore.t

@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0303;
+our $VERSION = 0.0304;
 
 =head1 DESCRIPTION
 
@@ -225,23 +225,37 @@ second return value from handler will still be returned by handle_event.
 Whitelist possible transitions. Attempt to violate will die.
 Not allowed in a final state.
 
-=item * on_enter => sub->( $self, $event, $old_state, $new_state )
+=item * on_enter => sub->( $self, $old_state, $new_state, $event )
 
 Whenever state is entered via handle_event, call this sub.
+If it dies, the state is NOT entered.
+
+B<NOTE> This happens immediately after processing the previous state.
+Otherwise this code could have been just placed in the beginning of the
+CODE itself.
+
+B<NOTE> $self->state is still the old state during execution of this callback.
 
 B<NOTE> on_enter is NOT called when new() or set_state() is called.
 
-=item * on_leave => sub->( $self, $event, $old_state, $new_state )
+=item * on_leave => sub->( $self, $old_state, $new_state, $event )
 
 Whenever state is left, call this sub.
+If it dies, cancel the transition.
 Not allowed in final state.
 
-B<NOTE> Returning a false value will not trigger on_enter and on_leave,
-however, returning current state will.
+B<NOTE> on_leave is ALWAYS called before on_enter.
+
+B<NOTE> Returning a false value from CODE will not
+trigger on_enter and on_leave,
+however, returning current state will trigger both.
 
 =back
 
-B<NOTE> even though CODEREF looks a lot like a method,
+During execution of CODE, on_enter, and on_leave, $_ is localized
+and represents the event being processed.
+
+B<NOTE> even though CODE looks a lot like a method,
 no method with such name is actually created and it is safe to have one.
 See CONTRACT below.
 
@@ -569,12 +583,16 @@ This is normally called as $instance->handle_event( $event ) and not directly.
 =cut
 
 sub handle_event {
-	my ($self, $instance, $event) = @_;
+	# The same in NORMAL notation:
+	# my ($self, $instance, $event) = @_;
+	# local $_ = $event;
+	# Premature optimization, thats it...
+	(my ($self, $instance), local $_) = @_;
 
 	my $old_state = $instance->state;
 	my $code = $self->{state_handler}{ $old_state };
 
-	my ($new_state, $ret) = $code->( $instance, $event );
+	my ($new_state, $ret) = $code->( $instance, $_ );
 
 	if ($new_state and !$self->{final_state}{$old_state}) {
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
@@ -584,12 +602,12 @@ sub handle_event {
 				and !$self->{transitions}{ $old_state }{ $new_state };
 		# TODO check legal transitions if available
 		$self->{on_leave}{$old_state}->(
-				$instance, $event, $old_state, $new_state )
+				$instance, $old_state, $new_state, $_ )
 			if $self->{on_leave}{$old_state};
-		$instance->set_state( $new_state );
 		$self->{on_enter}{$new_state}->(
-				$instance, $event, $old_state, $new_state )
+				$instance, $old_state, $new_state, $_ )
 			if $self->{on_enter}{$new_state};
+		$instance->set_state( $new_state );
 	};
 
 	return $ret;
