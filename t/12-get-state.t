@@ -39,6 +39,12 @@ is ($inspect->{on_leave},      undef,       "!on_leave");
 is (ref $inspect->{on_enter},  'CODE',      " on_enter");
 is ($inspect->{on_enter}->(),  "enter",     " on_enter (result)");
 
+eval {
+	$sm->get_state("no_exist");
+};
+note "Error was", $@;
+like ($@, qr([Nn]o state), "Getting absent states not allowed");
+
 note $sm->pretty_print;
 
 done_testing;
