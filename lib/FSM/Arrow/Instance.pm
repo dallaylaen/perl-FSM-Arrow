@@ -35,7 +35,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.0301;
+our $VERSION = 0.0302;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -72,9 +72,9 @@ B<NOTE> The state MAY be changed after this call.
 =cut
 
 sub handle_event {
-	my ($self, $event) = @_;
-
-	return $self->schema->handle_event( $self, $event );
+	# Delegate the hard work to FSM::Arrow
+	# so that all concerted code modifications are local to that file.
+	$_[0]->schema->handle_event(@_);
 };
 
 =head2 state()
@@ -97,6 +97,7 @@ Sets new state. This is normally NOT called directly.
 sub set_state {
 	my ($self, $new) = @_;
 	$self->{state} = $new;
+	return $self;
 };
 
 =head2 schema()
