@@ -35,10 +35,11 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.0302;
+our $VERSION = 0.0303;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
+use Carp;
 our @CARP_NOT = qw(FSM::Arrow);
 
 =head2 new( %args )
@@ -52,13 +53,11 @@ Normally, this module isn't instantiated; FSM::Arrow->spawn() is called instead.
 =cut
 
 sub new {
-	my ($class, %args) = @_;
+	my $class = shift;
+	croak "Odd number of elements in $class->new(...)"
+		if @_ % 2;
 
-	my $self = bless {
-		schema => $args{schema},
-	}, $class;
-
-	return $self;
+	return bless { @_ }, $class;
 };
 
 =head2 handle_event( $event )

@@ -23,3 +23,8 @@ DISCUSSION
 		(i.e. next state gets the same event immediately)
 0.03	All-state transitions? (e.g. disconnect on a phone call)
 0.03	Chained handlers? (i.e. handler1 returned nothing => check 2 & so on)
+
+EXAMPLES
+Rob https://metacpan.org/release/Web-Machine
+https://metacpan.org/release/FSA-Rules
+
