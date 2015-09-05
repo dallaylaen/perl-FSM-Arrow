@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0306;
+our $VERSION = 0.0307;
 
 =head1 DESCRIPTION
 
@@ -439,14 +439,16 @@ sub clone {
 	);
 
 	$new->{$_} = _shallow_copy($self->{$_})
-		for qw(state_handler);
+		for qw(state_handler on_enter on_leave final_state);
+	$new->{$_} = dclone($self->{$_})
+		for qw(transitions);
 
 	return $new;
 };
 
 sub _shallow_copy {
 	my $hash = shift;
-	return { %$hash };
+	return ref $hash ? { %$hash } : $hash;
 };
 
 =head2 id()
