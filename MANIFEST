@@ -24,3 +24,4 @@ t/10-decl-final.t
 t/11-decl-carp.t
 t/12-get-state.t
 t/13-decl-underscore.t
+t/14-decl-on-change.t

@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0305;
+our $VERSION = 0.0306;
 
 =head1 DESCRIPTION
 
@@ -128,7 +128,7 @@ use FSM::Arrow::Instance;
 =head2 sm_init %options
 
 Initialize state machine schema with %options. See new() below.
-This call may be omitted.
+This call may be omitted, unless options are really needed.
 
 options may include:
 
@@ -144,6 +144,16 @@ After that, state definitions are copied into current class.
 B<NOTE> Parent class MUST also be set up using FSM::Arrow declarative interface.
 
 B<NOTE> Only one parent may be supplied.
+
+=item * on_state_change => CODE($instance, $old, $new, $event)
+
+Callback that is called upon EVERY state transition.
+The signature is exactly that of on_enter, on_leave
+in the sm_state section below.
+
+May be useful for debugging, logging etc.
+
+B<NOTE> Exception in this callback would cancel the transition.
 
 =back
 
@@ -386,6 +396,8 @@ Default is the first state defined by add_state();
 sub new {
 	my ($class, %args) = @_;
 
+	croak __PACKAGE__."->new: on_state_change must be a subroutine"
+		unless _is_sub($args{on_state_change});
 	if (my $parent = delete $args{parent}) {
 		return $parent->clone( %args );
 	};
@@ -393,9 +405,10 @@ sub new {
 	$args{instance_class} ||= 'FSM::Arrow::Instance';
 
 	my $self = bless {
-		instance_class => $args{instance_class},
-		initial_state => $args{initial_state},
-		id => $args{id},
+		instance_class   => $args{instance_class},
+		initial_state    => $args{initial_state},
+		on_state_change  => $args{on_state_change},
+		id               => $args{id},
 	}, $class;
 
 	$self->{id} ||= $self->generate_id;
@@ -419,8 +432,9 @@ sub clone {
 		if exists $args{parent};
 
 	my $new = (ref $self)->new(
-		instance_class => $self->instance_class,
-		initial_state  => $self->initial_state,
+		instance_class   => $self->instance_class,
+		initial_state    => $self->initial_state,
+		on_state_change  => $self->{on_state_change},
 		%args,
 	);
 
@@ -573,7 +587,8 @@ sub spawn {
 Process event based on $instance->state and state definition.
 Adjust state accordingly.
 
-Return is determined by state handler.
+Return is determined by state handler's second optional return value.
+See sm_state above for HANDLER discussion.
 
 This is normally called as $instance->handle_event( $event ) and not directly.
 
@@ -604,6 +619,9 @@ sub handle_event {
 		$self->{on_enter}{$new_state}->(
 				$instance, $old_state, $new_state, $_ )
 			if $self->{on_enter}{$new_state};
+		$self->{on_state_change}->(
+				$instance, $old_state, $new_state, $_ )
+			if $self->{on_state_change};
 		$instance->set_state( $new_state );
 	};
 

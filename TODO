@@ -1,7 +1,6 @@
 ROADMAP
 
 WISHLIST
-0.02	DEV debugging primitives (on_state_change)
 0.02	TST anyevent example
 0.02	TST psgi example
 0.03 	TST push-down parser example (JSON?)
@@ -15,6 +14,7 @@ WISHLIST
 0.03	API Make Instance methods (CONTRACT) more consistent.
 		Like no new() params, but both set_state and set_schema present.
 0.03	API Event preprocessor callback
+0.03	API Define accepting states.
 
 DISCUSSION
 0.02	Extract FSM::Arrow::Schema?
