@@ -19,6 +19,7 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.03	DEV per machine stats (now many in which state) (do we need it? )
 0.03	API state redefine properties w/o changing sub
 0.03	TST Add distributed connected machines example.
+0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?
@@ -27,8 +28,10 @@ DISCUSSION ITEMS
 		(i.e. next state gets the same event immediately)
 0.03	All-state transitions? (e.g. disconnect on a phone call)
 0.03	Chained handlers? (i.e. handler1 returned nothing => check 2 & so on)
+0.03	Deferred events (cannot handle right now, but will be able to later)
+		Return special value? Implement queue in Instance? Leave to implementor?
 
 EXAMPLES
 Rob https://metacpan.org/release/Web-Machine
-https://metacpan.org/release/FSA-Rules
+Rob https://metacpan.org/release/FSA-Rules
 
