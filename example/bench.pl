@@ -1,5 +1,9 @@
 #!/usr/bin/env perl
 
+# This is not really an exapmle, but rather a benchmarking tool.
+# Thus state machines are made as simple as possible.
+# See $0 --help
+
 use strict;
 use warnings;
 use Time::HiRes qw(time);
@@ -44,16 +48,21 @@ if (!@ARGV or $ARGV[0] eq '--help') {
 	print <<"USAGE";
 This is a state machine benchmarking/performance tool.
 Usage: $0 <machine-type>=<iterations> ...
-Available types: @types
+Available types: all @types
 Output is "<tps> <time per i> <time> <count> <type> <description>\\n"
 for each type=count given
 USAGE
 	exit 1;
 };
 
-foreach (@ARGV) {
-	my ($type, $count) = /^(\S+)=(\d+)$/
+while (@ARGV) {
+	my ($type, $count) = shift() =~ /^(\S+)=(\d+)$/
 		or die "Bad cli format, see $0 --help";
+
+	if ($type eq 'all') {
+		unshift @ARGV, map { "$_=$count" } @types;
+		next;
+	};
 
 	$type->isa("FSM::Arrow::Instance")
 		or die "Unknown machine type $type, see $0 --help";
