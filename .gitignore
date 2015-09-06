@@ -12,3 +12,4 @@ pod2htm*.tmp
 Statistics-Approx-Bucket-*
 MYMETA.*
 .*.swp
+nytprof*
