@@ -33,3 +33,4 @@ t/16-decl-defaults.t
 t/17-bad-usage-exceptions.t
 t/18-decl-xs.t
 t/19-set-state.t
+example/markdown.pl
