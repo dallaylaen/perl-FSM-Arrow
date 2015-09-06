@@ -29,3 +29,4 @@ example/bit-string.pl
 t/15-decl-parent-metadata.t
 example/runner.psgi
 example/bench.pl
+t/16-decl-defaults.t

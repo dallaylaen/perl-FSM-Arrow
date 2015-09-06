@@ -35,11 +35,12 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.0303;
+our $VERSION = 0.0305;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
 use Carp;
+
 our @CARP_NOT = qw(FSM::Arrow);
 
 =head2 new( %args )
@@ -107,8 +108,10 @@ Returns state machine schema.
 
 sub schema {
 	my $self = shift;
-	return $self->{schema};
+	no warnings 'once'; ## no critic
+	# HACK Avoid warning on syntax check
+	# normally we're loaded by FSM::Arrow, so sm_schema DOES exist
+	return $self->{schema} ||= $FSM::Arrow::sm_schema{ ref $self };
 };
-
 
 1;

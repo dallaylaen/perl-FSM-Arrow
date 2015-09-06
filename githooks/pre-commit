@@ -30,8 +30,10 @@ done
 for i in `echo "$files" | grep 'lib/.*\.pm$'`; do 
   [ -f "$i" ] || continue
   echo "module $i"
-  perl -Mwarnings=FATAL,all -Mstrict -Ilib -w "$i" ||\
-    append_fail "$i" "Module won't run in strict mode"
+  STDERR=`perl -Mstrict -Ilib -w "$i" 2>&1`
+  [ $? -eq 0 ] || append_fail "$i" "Module fails to compile under strictures"
+  [ -z "$STDERR" ] || append_fail "$i" "Module warns under strictures"
+  echo "$STDERR"
   perlcritic "$i" || append_fail "$i" "Perl critic"
   git diff --cached $i | grep '^+.*\$VERSION' || append_fail "$i" "No version change"
 done

@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0307;
+our $VERSION = 0.0308;
 
 =head1 DESCRIPTION
 
@@ -161,7 +161,7 @@ sm_init MUST be called no more than once, and before ANY sm_state calls.
 
 =cut
 
-my %sm_schema;
+our %sm_schema;
 
 sub sm_init (@) { ## no critic
 	croak "sm_init: FATAL: Odd number of arguments"
@@ -291,14 +291,10 @@ sub _sm_init_schema {
 	return $sm_schema{ $caller } ||= do {
 		my $sm = $class->new( instance_class => $caller, @args );
 
-		my $schema_getter = sub { $sm };
-
 		# Now magic - alter target package
 		no strict 'refs';         ## no critic
-		no warnings 'redefine';   ## no critic
 
 		push @{ $caller.'::'.'ISA' }, 'FSM::Arrow::Instance';
-		*{ $caller.'::'.'schema' } = $schema_getter;
 
 		$sm;
 	};
@@ -580,7 +576,6 @@ sub spawn {
 	my $self = shift;
 
 	my $instance = $self->{instance_class}->new( schema => $self );
-	$instance->set_state($self->{initial_state});
 	return $instance;
 };
 
