@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0308;
+our $VERSION = 0.0309;
 
 =head1 DESCRIPTION
 
@@ -335,6 +335,22 @@ are overridden).
 
 If C<use fields> is used, adding C<state> and C<schema> to the fields list
 is required.
+
+The following function can be used to fetch exactly th FSM::Arrow instance
+used by sm_init/sm_state.
+
+=head2 get_default_sm( $class )
+
+Return state machine set up via declarative interface.
+
+Can be called as both FSM::Arrow::get_default_sm and
+FSM::Arrow->get_default_sm - it only cares about last argument.
+
+=cut
+
+sub get_default_sm {
+	return $sm_schema{ $_[-1] };
+};
 
 =head1 OBJECT-ORIENTED INTERFACE
 

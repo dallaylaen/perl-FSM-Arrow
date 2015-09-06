@@ -42,6 +42,18 @@ my @types;
 	sm_state flop => sub { "flip" }, on_enter => sub { };
 	sub descr { "2 alterating states, with 1 callbacks each" };
 	push @types, __PACKAGE__;
+
+	package flip_xs;
+	use FSM::Arrow qw(:class);
+
+	use Class::XSAccessor
+		setters => { set_state => "state" },
+		getters => { state => "state", schema => "schema" };
+	sm_state flip => sub { "flop" };
+	sm_state flop => sub { "flip" };
+	sub descr { "2 alterating states, no callbacks" };
+	push @types, __PACKAGE__;
+
 };
 
 if (!@ARGV or $ARGV[0] eq '--help') {

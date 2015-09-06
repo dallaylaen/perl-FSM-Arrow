@@ -35,7 +35,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.0305;
+our $VERSION = 0.0306;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -45,11 +45,20 @@ our @CARP_NOT = qw(FSM::Arrow);
 
 =head2 new( %args )
 
-Instantiate the object.
+%args may include:
 
-$args{schema} must exist and be a FSM::Arrow object.
+=over
 
-Normally, this module isn't instantiated; FSM::Arrow->spawn() is called instead.
+=item * schema - a FSM::Arrow object that holds the state metadata;
+
+=item * state - the initial state name;
+
+=item * any other key/value pairs.
+
+=back
+
+This constructor is as simple as possible and can be overridden by
+Moose, Class::XSAccessor, etc. if needed.
 
 =cut
 
@@ -58,7 +67,10 @@ sub new {
 	croak "Odd number of elements in $class->new(...)"
 		if @_ % 2;
 
-	return bless { @_ }, $class;
+	my %args = @_;
+	$args{schema} ||= $FSM::Arrow::sm_schema{ $class };
+	$args{state}  ||= $args{schema} && $args{schema}->initial_state;
+	return bless \%args, $class;
 };
 
 =head2 handle_event( $event )
@@ -83,9 +95,15 @@ Returns current state name.
 
 =cut
 
+# NOTE We're already setting default state in constructor, however,
+# using Moose would override constructor.
 sub state {
 	my $self = shift;
-	return $self->{state} ||= $self->schema->initial_state;
+
+	if (!exists $self->{state}) {
+		$self->{state} = $self->get_initial_state;
+	};
+	return $self->{state};
 };
 
 =head2 set_state( $name )
@@ -100,6 +118,15 @@ sub set_state {
 	return $self;
 };
 
+=head2 get_initial_state()
+
+=cut
+
+sub get_initial_state {
+	my $sm = $_[0]->schema;
+	return $sm && $sm->initial_state;
+};
+
 =head2 schema()
 
 Returns state machine schema.
@@ -108,10 +135,10 @@ Returns state machine schema.
 
 sub schema {
 	my $self = shift;
-	no warnings 'once'; ## no critic
-	# HACK Avoid warning on syntax check
-	# normally we're loaded by FSM::Arrow, so sm_schema DOES exist
-	return $self->{schema} ||= $FSM::Arrow::sm_schema{ ref $self };
+
+	$self->{schema} = $FSM::Arrow::sm_schema{ ref $self }
+		unless exists $self->{schema};
+	return $self->{schema};
 };
 
 1;

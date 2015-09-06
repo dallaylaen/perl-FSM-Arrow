@@ -12,6 +12,39 @@ BEGIN {
 	};
 };
 
+{
+	package My::Machine;
+
+	use Moose;
+	use FSM::Arrow qw(:class);
+
+	has last_state => is => "rw";
+
+	sm_state initial => sub {
+		my ($self, $event) = @_;
+		$self->last_state( $self->state );
+		return (final => $1)
+			if $event =~ /^go (.*)/i;
+	};
+
+	sm_state final => sub {
+		my $self = shift;
+		return 0 => $self->last_state;
+	};
+
+	package My::Redefine;
+	use Moose;
+	use FSM::Arrow qw(:class);
+
+	has schema => is => "ro",
+		default => sub { FSM::Arrow::get_default_sm( ref $_[0] )};
+	has state => is => "rw",
+		default => sub { $_[0]->schema->initial_state }, lazy => 1;
+
+	sm_state one => sub { "two" };
+	sm_state two => sub {}, final => 1;
+};
+
 my $sm = My::Machine->new;
 
 is ($sm->state, 'initial', "initial state holds");
@@ -30,26 +63,11 @@ $ret = $sm->handle_event("go more");
 is ($ret, 'initial', "final handler => last state");
 is ($sm->state, 'final', "final handler => no state change");
 
+$sm = My::Redefine->new;
+
+is ($sm->state, "one", "default state ok");
+$sm->handle_event("xxx");
+is ($sm->state, "two", "sm still works");
+
 done_testing;
 
-BEGIN {
-package My::Machine;
-
-use Moose;
-use FSM::Arrow qw(:class);
-
-has last_state => is => "rw";
-
-sm_state initial => sub {
-	my ($self, $event) = @_;
-	$self->last_state( $self->state );
-	return (final => $1)
-		if $event =~ /^go (.*)/i;
-};
-
-sm_state final => sub {
-	my $self = shift;
-	return 0 => $self->last_state;
-};
-
-}; # BEGIN
