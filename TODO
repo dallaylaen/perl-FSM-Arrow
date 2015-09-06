@@ -2,19 +2,21 @@ ROADMAP
 
 WISHLIST
 0.02	TST anyevent example
-0.02	TST psgi example
 0.03 	TST push-down parser example (JSON?)
 0.03	TST some benchmarks
 0.03	API event filter - preprocess ALL events before sending to handlers
 0.03	TST ad-hoc parser example (aka ini file)
 0.03	DEV state graph object, stringify
-0.03	API per machine stats (now many in which state) (do we need it? )
+0.03	DEV per machine stats (now many in which state) (do we need it? )
 0.03	API state redefine properties w/o changing sub
 0.03	DOC More rationale & basic SM discussion (?)
 0.03	API Make Instance methods (CONTRACT) more consistent.
 		Like no new() params, but both set_state and set_schema present.
 0.03	API Event preprocessor callback
-0.03	API Define accepting states.
+0.03	API Define accepting states. Accepting = if stopped here, input's fine.
+0.03	API	Add is_final to state.
+0.03	TST Add distributed connected machines example.
+0.03	TST Add improved PSGI example to show inheritance power.
 
 DISCUSSION
 0.02	Extract FSM::Arrow::Schema?

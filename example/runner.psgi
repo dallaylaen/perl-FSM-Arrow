@@ -93,6 +93,8 @@ use lib "$Bin/../lib";
 	# would not suffice.
 	# The good thing is that store/load knows NOTHING about the states
 	# except the fact that there's a "state" field in class, among others.
+	# NOTE These could also be defined in a parent class - although
+	# FSM::Arrow adds its own ISA, normal inheritance is preserved.
 	my $incr;
 	my %storage;
 	sub load {
@@ -101,15 +103,19 @@ use lib "$Bin/../lib";
 		return $class->new( session => ++$incr )
 			unless $session;
 
-		die "Session ont found: $session"
-			unless exists $storage{$session};
-
 		return $storage{$session};
 	};
 
+	# OK, this is redundant, overwriting self with self...
+	# There would be something less ridiculous in a real app.
 	sub save {
 		my $self = shift;
 		$storage{ $self->{session} } = $self;
+	};
+
+	sub delete {
+		my $self = shift;
+		delete $storage{ $self->{session} };
 	};
 };
 # The state machine class ends here.
@@ -128,6 +134,10 @@ my $app = sub {
 
 	# 2. Load/create state machine from session
 	my $sm = My::SM->load( $session );
+	if (!$sm) {
+		return [ 404, [ "Content-Type" => "text/plain" ]
+			, [ "Session not found: $session" ]];
+	};
 
 	# 3. Feed event to SM. We SHOULD eval this
 	# but let's leave that as an exercise for now.
