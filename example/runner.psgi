@@ -95,27 +95,35 @@ use lib "$Bin/../lib";
 	# except the fact that there's a "state" field in class, among others.
 	# NOTE These could also be defined in a parent class - although
 	# FSM::Arrow adds its own ISA, normal inheritance is preserved.
+
 	my $incr;
 	my %storage;
 	sub load {
 		my ($class, $session) = @_;
 
-		return $class->new( session => ++$incr )
+		return $class->new( session => ++$incr, distance => 0 )
 			unless $session;
 
-		return $storage{$session};
+		return $storage{$session} && $class->new( %{ $storage{$session} } );
 	};
 
-	# OK, this is redundant, overwriting self with self...
-	# There would be something less ridiculous in a real app.
 	sub save {
 		my $self = shift;
-		$storage{ $self->{session} } = $self;
+		$storage{ $self->{session} } = {
+			session   => $self->{session},
+			state     => $self->{state},
+			distance  => $self->{distance},
+		};
 	};
 
 	sub delete {
 		my $self = shift;
 		delete $storage{ $self->{session} };
+	};
+
+	sub DESTROY {
+		my $self = shift;
+		warn "Object left scope: id=$self->{session}, state=$self->{state}, distance=$self->{distance}";
 	};
 };
 # The state machine class ends here.
