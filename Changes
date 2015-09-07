@@ -1,5 +1,15 @@
 Revision history for FSM-Arrow
 
+0.04	Mon Sep 7 2015
+		TST Add some examples (psgi web service, line-by-line, bit string x3)
+		TST Add benchmarking tool with simple meaningless SMs
+		API Add final states
+		API $_ is now localized and equal to event in handlers and callbacks
+		DEV Add on_state_change callback
+		DEV Add inspection tools: list_states, get_state
+		BUG Instance now compatible with both Moose and XSAccessor
+		BUG Fix loss of metadata in clone()
+
 0.03	Sun Aug 30 2015
 		API Add on_enter, on_leave callbacks
 		API Add restricted transitions (next => [...])

@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0309;
+our $VERSION = 0.04;
 
 =head1 DESCRIPTION
 
