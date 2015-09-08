@@ -34,3 +34,4 @@ t/17-bad-usage-exceptions.t
 t/18-decl-xs.t
 t/19-set-state.t
 example/markdown.pl
+README.md

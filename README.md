@@ -4,7 +4,7 @@ Event-driven state machine with declarative interface.
 
 # Intended usage
 
-1. Declare states as "name" => sub { HANDLER };
+1. Declare states as (`name`, `sub { HANDLER }`) pairs.
 Handler returns next state when called.
 
 2. Create machine. Multiple independent instances may exist.

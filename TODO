@@ -3,15 +3,13 @@ ROADMAP (future version, change required for that version)
 WISHLIST (past version, change that was suggested during that version)
 0.02	TST anyevent example
 0.03 	TST push-down parser example (JSON?)
-0.03	API event filter - preprocess ALL events before sending to handlers
 0.03	TST ad-hoc parser example (aka ini file)
 0.03	DOC More rationale & basic SM discussion (?)
-0.03	API Make Instance methods (CONTRACT) more consistent.
-		Like no new() params, but both set_state and set_schema present.
-0.03	API Event preprocessor callback
 0.03	API Define accepting states. Accepting = if stopped here, input's fine.
-0.03	API	Add is_final to state.
+0.03	API	Add is_final() to Instance.
 0.03	TST Add improved PSGI example to show inheritance power.
+0.04	TST Expect example (run external program, control execution flow,
+		enter passwd)
 
 FAR WISHLIST (past version, change that was suggested during that version)
 0.03	DEV state graph object, stringify
@@ -19,6 +17,11 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.03	API state redefine properties w/o changing sub
 0.03	TST Add distributed connected machines example.
 0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
+0.03	API Event preprocessor callback
+0.03	API Make Instance methods (CONTRACT) more consistent.
+		Like no new() params, but both set_state and set_schema present.
+0.04	API stricture - require ALL states to have next => [...]
+0.04	API next=>[] means final
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?
@@ -33,4 +36,6 @@ DISCUSSION ITEMS
 EXAMPLES
 Rob https://metacpan.org/release/Web-Machine
 Rob https://metacpan.org/release/FSA-Rules
+Rob https://metacpan.org/pod/Class::StateMachine::Declarative
+Rob https://github.com/salva/s5-state-machines
 
