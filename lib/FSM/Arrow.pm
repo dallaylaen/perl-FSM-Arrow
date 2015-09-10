@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.04;
+our $VERSION = 0.0401;
 
 =head1 DESCRIPTION
 
@@ -117,7 +117,8 @@ See C<sm_state> below.
 
 use Carp;
 use Storable qw(dclone); # would rather use Clone, but is it ubiquitous?
-use parent qw(Exporter);
+use Exporter;
+our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(sm_state sm_init);
 our %EXPORT_TAGS = ( class => [ 'sm_state', 'sm_init' ] );
 

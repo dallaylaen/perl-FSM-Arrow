@@ -22,6 +22,9 @@ FAR WISHLIST (past version, change that was suggested during that version)
 		Like no new() params, but both set_state and set_schema present.
 0.04	API stricture - require ALL states to have next => [...]
 0.04	API next=>[] means final
+0.04	TST nested machine example - low-level machine assembling events
+		for high-level one
+0.04	TST inherited machine example
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?
