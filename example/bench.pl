@@ -61,10 +61,21 @@ if (!@ARGV or $ARGV[0] eq '--help') {
 This is a state machine benchmarking/performance tool.
 Usage: $0 <machine-type>=<iterations> ...
 Available types: all @types
-Output is "<tps> <time per i> <time> <count> <type> <description>\\n"
+Output is "<tps> <rel_time> <total time> <count> <type> <description>\\n"
 for each type=count given
+rel_time = time per iteration / empty subroutine call duration
 USAGE
 	exit 1;
+};
+
+my $unit = do {
+	my $t0 = time;
+	my $code = sub {};
+	my $count = 10000;
+	for (my $i=$count; $i-->0; ) {
+		$code->();
+	};
+	(time - $t0) / $count;
 };
 
 while (@ARGV) {
@@ -92,7 +103,7 @@ while (@ARGV) {
 	};
 	my $spent = time - $t0;
 
-	printf "%f %g %f %u %s (%s)\n"
-		, $count/$spent, $spent/$count, $spent, $count, $type, $type->descr;
+	printf "%f %f %f %u %s (%s)\n"
+		, $count/$spent, $spent/$count/$unit, $spent, $count, $type, $type->descr;
 };
 
