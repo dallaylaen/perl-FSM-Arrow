@@ -13,8 +13,8 @@ t/01-make-machine.t
 lib/FSM/Arrow/Instance.pm
 TODO
 t/02-declarative-magic.t
-t/03-decl-moose.t
-t/04-decl-fields.t
+t/03-compat-moose.t
+t/04-compat-fields.t
 t/07-decl-fail.t
 t/05-decl-parent.t
 t/06-decl-parent-badparent.t
@@ -31,7 +31,7 @@ example/runner.psgi
 example/bench.pl
 t/16-decl-defaults.t
 t/17-bad-usage-exceptions.t
-t/18-decl-xs.t
+t/18-compat-xs.t
 t/19-set-state.t
 example/markdown.pl
 README.md
