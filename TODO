@@ -10,6 +10,8 @@ WISHLIST (past version, change that was suggested during that version)
 0.03	TST Add improved PSGI example to show inheritance power.
 0.04	TST Expect example (run external program, control execution flow,
 		enter passwd)
+0.04	API Add typed events + strict transitions
+		transition: event_type => new_state => code
 
 FAR WISHLIST (past version, change that was suggested during that version)
 0.03	DEV state graph object, stringify

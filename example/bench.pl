@@ -47,8 +47,8 @@ my @types;
 	use FSM::Arrow qw(:class);
 
 	use Class::XSAccessor
-		setters => { set_state => "state" },
-		getters => { state => "state", schema => "schema" };
+		accessors => { state => "state" },
+		getters => { schema => "schema" };
 	sm_state flip => sub { "flop" };
 	sm_state flop => sub { "flip" };
 	sub descr { "2 alterating states, no callbacks" };

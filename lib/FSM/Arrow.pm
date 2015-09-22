@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0401;
+our $VERSION = 0.0402;
 
 =head1 DESCRIPTION
 
@@ -97,7 +97,7 @@ On the first usage of either, the following happens:
 =item * The calling package gets C<schema> method which returns
 a FSM::Arrow object;
 
-=item * The calling package inherits C<state>, C<set_state>, and C<new> methods
+=item * The calling package inherits C<state> and C<new> methods
 with obvious semantics (see CONTRACT below);
 
 =item * The calling package also inherits C<handle_event( $event )> method
@@ -247,7 +247,7 @@ HANDLER itself.
 
 B<NOTE> $self->state is still the old state during execution of this callback.
 
-B<NOTE> on_enter is NOT called when new() or set_state() is called.
+B<NOTE> on_enter is NOT called when new() or state(...) is called.
 
 =item * on_leave => sub->( $self, $old_state, $new_state, $event )
 
@@ -313,11 +313,10 @@ C<$instance->scheme()> method must be present.
 Its return value must be the same C<FSM::Arrow> object
 throughout the instance lifetime.
 
-C<$instance->set_state($scalar)> method must be present.
+C<$instance->state(...)> accessor must be present.
 
-C<$instance->state()> method must be present.
-Its return value must be the last value given to C<$instance->set_state>,
-or C<$instance->scheme->initial_state> if C<set_state> was never called.
+When given no argument, it must return the last value given to it,
+or C<$instance->scheme->initial_state> if none available.
 
 $instance->handle_event($event) method must be left intact, or call
 C<$instance->scheme->handle_event($instance, $event)>
@@ -636,7 +635,7 @@ sub handle_event {
 		$self->{on_state_change}->(
 				$instance, $old_state, $new_state, $_ )
 			if $self->{on_state_change};
-		$instance->set_state( $new_state );
+		$instance->state( $new_state );
 	};
 
 	return $ret;

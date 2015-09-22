@@ -32,7 +32,7 @@ use lib "$Bin/../lib";
 
                                      # At this point, current package
                                      # is a FSM::Arrow::Instance descendant
-                                     # and has new(), state(), set_state(),
+                                     # and has new(), state(),
                                      # schema(), and handle_event() methods.
 
     sm_state s1 => sub {             # Second state goes...

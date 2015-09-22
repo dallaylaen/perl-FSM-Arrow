@@ -7,7 +7,7 @@ use Test::More;
 # Check that moose is available, skip gently otherwise
 BEGIN {
 	if (!eval { require Moose; 1 }) {
-		plan skip_all => "Moose not found, skipping Moose test";
+		plan skip_all => "Moose not found, skipping Moose test (error: $@)";
 		exit;
 	};
 };

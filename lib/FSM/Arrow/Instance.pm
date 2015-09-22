@@ -21,10 +21,8 @@ provided that the following contract is held:
 
 =item * schema() ALWAYS returns that $scalar after that;
 
-=item * set_state( $scalar ) is present;
-
 =item * state() is present and ALWAYS returns
-whatever was given to set_state last time;
+whatever was given to it last time;
 
 =item * handle_event( $scalar ) is not redefined, or wraps around
 SUPER::handle_event;
@@ -35,7 +33,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.04;
+our $VERSION = 0.0402;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -91,7 +89,14 @@ sub handle_event {
 
 =head2 state()
 
-Returns current state name.
+Without arguments, returns current state.
+
+=head2 state( $new_state_name )
+
+With one argument, sets new state. Returns self (this is not required
+by CONTRACT though).
+
+B<NOTE> This is normally NOT called directly.
 
 =cut
 
@@ -100,22 +105,15 @@ Returns current state name.
 sub state {
 	my $self = shift;
 
+	if (@_) {
+		$self->{state} = shift;
+		return $self;
+	};
+
 	if (!exists $self->{state}) {
 		$self->{state} = $self->get_initial_state;
 	};
 	return $self->{state};
-};
-
-=head2 set_state( $name )
-
-Sets new state. This is normally NOT called directly.
-
-=cut
-
-sub set_state {
-	my ($self, $new) = @_;
-	$self->{state} = $new;
-	return $self;
 };
 
 =head2 get_initial_state()
