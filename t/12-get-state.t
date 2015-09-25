@@ -11,7 +11,7 @@ use Test::More;
 	sm_state start => sub { "end" => 42 }, on_leave => sub { "leave" },
 		next => [ "end" ];
 	sm_state end => sub { "nowhere_to_go" }, on_enter => sub { "enter" },
-		final => 1;
+		final => 1, accepting => "ok";
 };
 
 my $sm = My::SM->new->schema;
@@ -29,6 +29,10 @@ is_deeply($inspect->{next},    [ "end" ],   " next");
 is ($inspect->{on_enter},      undef,       "!on_enter");
 is (ref $inspect->{on_leave},  'CODE',      " on_leave");
 is ($inspect->{on_leave}->(),  "leave",     " on_leave (result)");
+is ($inspect->{accepting},     0,           "!accepting");
+is_deeply( [ sort keys %$inspect ],
+	[ sort qw( name handler initial final next on_enter on_leave accepting ) ],
+	"No extra keys");
 
 note "inspect 'end'";
 $inspect = $sm->get_state( "end" );
@@ -38,6 +42,10 @@ is_deeply($inspect->{next},    undef,       "!next");
 is ($inspect->{on_leave},      undef,       "!on_leave");
 is (ref $inspect->{on_enter},  'CODE',      " on_enter");
 is ($inspect->{on_enter}->(),  "enter",     " on_enter (result)");
+is ($inspect->{accepting},     "ok",        " accepting");
+is_deeply( [ sort keys %$inspect ],
+	[ sort qw( name handler initial final next on_enter on_leave accepting ) ],
+	"No extra keys");
 
 eval {
 	$sm->get_state("no_exist");

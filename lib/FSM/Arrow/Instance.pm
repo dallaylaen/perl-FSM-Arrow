@@ -33,7 +33,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.0403;
+our $VERSION = 0.0404;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -125,6 +125,19 @@ Tells whether current state is final.
 sub is_final {
 	my $self = shift;
 	return $self->schema->is_final( $self->state );
+};
+
+=head2 accepting()
+
+Return the outcome type/name for the current state, or 0 if none.
+
+See C<accepting> parameter in sm_state.
+
+=cut
+
+sub accepting {
+	my $self = shift;
+	return $self->schema->accepting( $self->state );
 };
 
 =head2 get_initial_state()

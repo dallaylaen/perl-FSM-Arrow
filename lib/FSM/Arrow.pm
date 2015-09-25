@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0403;
+our $VERSION = 0.0404;
 
 =head1 DESCRIPTION
 
@@ -230,6 +230,14 @@ For now, the LAST such option overrides the previous ones.
 
 Any outgoing transitions will be ignored, however,
 second return value from handler will still be returned by handle_event.
+
+=item * accepting => true scalar
+
+Event sequence leading to this state is said to be accepted by the SM.
+NOT only final states may be accepting.
+
+C<$sm_instance-\>accepting> will return exactly the scalar given above
+when the machine is in this state, or 0 if it is missing / not true.
 
 =item * next => [ state, state ... ]
 
@@ -451,7 +459,7 @@ sub clone {
 	);
 
 	$new->{$_} = _shallow_copy($self->{$_})
-		for qw(state_handler on_enter on_leave final_state);
+		for qw(state_handler on_enter on_leave final_state accepting);
 	$new->{$_} = dclone($self->{$_})
 		for qw(transitions);
 
@@ -556,7 +564,7 @@ sub add_state {
 		? _array_to_hash( $args{next} )
 		: undef;
 	exists $args{$_} and $self->{$_}{ $name } = $args{$_}
-		for qw(on_enter on_leave);
+		for qw(on_enter on_leave accepting);
 
 	# Lock state. Note: this is released when object is cloned
 	#    to allow state overrides
@@ -662,6 +670,20 @@ sub is_final {
 	return 0;
 };
 
+=head2 accepting( $state_name )
+
+Tells whether given state is an accepting state.
+Returns a true scalar denoting outcome type, or 0 if none.
+
+Invalid states are ignored, i.e. no exception. This may change in the future.
+
+=cut
+
+sub accepting {
+	my ($self, $state) = @_;
+	return $self->{accepting}{$state} || 0;
+};
+
 =head2 generate_id()
 
 Returns an unique id containing at least schema and instance class refs.
@@ -722,6 +744,7 @@ sub get_state {
 		on_enter   => $self->{on_enter}{$name},
 		on_leave   => $self->{on_leave}{$name},
 		initial    => $self->initial_state eq $name ? 1 : 0,
+		accepting  => $self->{accepting}{$name} || 0,
 	};
 };
 
