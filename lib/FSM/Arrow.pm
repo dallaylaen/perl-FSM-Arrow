@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0404;
+our $VERSION = 0.0405;
 
 =head1 DESCRIPTION
 
@@ -105,7 +105,7 @@ which is the whole point of this.
 
 =back
 
-=head2 handle_event( $event )
+=head3 handle_event( $event )
 
 Feeds event to the current state's handler. If the handler returns
 a transition, state is undated accordingly. Return value is also determined
@@ -126,7 +126,7 @@ our @CARP_NOT = qw(FSM::Arrow::Instance);
 
 use FSM::Arrow::Instance;
 
-=head2 sm_init %options
+=head3 sm_init %options
 
 Initialize state machine schema with %options. See new() below.
 This call may be omitted, unless options are really needed.
@@ -198,7 +198,7 @@ sub sm_init (@) { ## no critic
 	__PACKAGE__->_sm_init_schema($caller, %args);
 };
 
-=head2 sm_state 'name' => HANDLER($self, $event), %options;
+=head3 sm_state 'name' => HANDLER($self, $event), %options;
 
 Define a new state.
 
@@ -330,6 +330,12 @@ $instance->handle_event($event) method must be left intact, or call
 C<$instance->scheme->handle_event($instance, $event)>
 at some point if redefined.
 
+The following methods are present in FSM::Arrow::Instance,
+and should be redefined with care, though they don't affect
+handle_event per se:
+
+C<is_final>, C<accepting>, C<get_initial_state>.
+
 Additionally, if used with OO interface (see below), the constructor
 must be named C<new()>, and must accept C<new(schema => $object)> parameters
 resulting in that very object being returned by C<scheme> method.
@@ -347,7 +353,7 @@ is required.
 The following function can be used to fetch exactly th FSM::Arrow instance
 used by sm_init/sm_state.
 
-=head2 get_default_sm( $class )
+=head3 get_default_sm( $class )
 
 Return state machine set up via declarative interface.
 
@@ -397,7 +403,7 @@ provided that it follows CONTRACT (see above).
 
 =cut
 
-=head2 new( %args )
+=head3 new( %args )
 
 Args may include:
 
@@ -435,7 +441,7 @@ sub new {
 	return $self;
 };
 
-=head2 clone( %options )
+=head3 clone( %options )
 
 Create a copy of SM schema object.
 
@@ -471,38 +477,7 @@ sub _shallow_copy {
 	return ref $hash ? { %$hash } : $hash;
 };
 
-=head2 id()
-
-Returns state machine schema unique identifier.
-
-Unless given explicitly to new(), defaults to generate_id() output.
-
-=cut
-
-sub id {
-	return $_[0]->{id};
-};
-
-=head2 initial_state()
-
-Returns initial state. Defaults to first added state,
-but may be overridden in constructor.
-
-=cut
-
-sub initial_state {
-	return $_[0]->{initial_state};
-};
-
-=head2 instance_class()
-
-=cut
-
-sub instance_class {
-	return $_[0]->{instance_class};
-};
-
-=head2 add_state( 'name' => HANDLER($instance, $event), %options )
+=head3 add_state( 'name' => HANDLER($instance, $event), %options )
 
 Define a new state.
 
@@ -588,7 +563,7 @@ sub _array_to_hash {
 	\%hash;
 };
 
-=head2 spawn()
+=head3 spawn()
 
 Returns a new machine instance.
 
@@ -603,7 +578,7 @@ sub spawn {
 	return $instance;
 };
 
-=head2 handle_event( $instance, $event )
+=head3 handle_event( $instance, $event )
 
 Process event based on $instance->state and state definition.
 Adjust state accordingly.
@@ -653,62 +628,13 @@ sub _croak {
 	croak $_[0]->id.": $_[1]";
 };
 
-=head2 is_final( $state_name )
+=head2 DEBUGGING/INSPECTION PRIMITIVES
 
-Tells whether $state_name is a final state in the current schema.
-
-Invalid states are ignored, i.e. no exception. This may change in the future.
-
-=cut
-
-sub is_final {
-	my ($self, $state) = @_;
-
-	return 1 if $self->{final_state}{$state};
-	# $self->_croak("Invalid state $state")
-	#     unless $self->{states}{$state};
-	return 0;
-};
-
-=head2 accepting( $state_name )
-
-Tells whether given state is an accepting state.
-Returns a true scalar denoting outcome type, or 0 if none.
-
-Invalid states are ignored, i.e. no exception. This may change in the future.
-
-=cut
-
-sub accepting {
-	my ($self, $state) = @_;
-	return $self->{accepting}{$state} || 0;
-};
-
-=head2 generate_id()
-
-Returns an unique id containing at least schema and instance class refs.
-
-B<NOTE> This is normally NOT called directly.
-
-=cut
-
-my $id;
-sub generate_id {
-	my $self = shift;
-
-	my $schema = ref $self;
-	my $instance = $self->{instance_class};
-
-	return "$schema<$instance>#".++$id;
-};
-
-=head1 DEBUGGING/INSPECTION PRIMITIVES
-
-=head2 list_states
+=head3 list_states
 
 List all defined states. initial_state is guaranteed to come first.
 
-=head2 get_state( $name )
+=head3 get_state( $name )
 
 Get hashref with state properties. State can be recreated as
 
@@ -748,7 +674,7 @@ sub get_state {
 	};
 };
 
-=head2 pretty_print
+=head3 pretty_print
 
 B<EXPERIMENTAL>
 
@@ -772,6 +698,104 @@ sub pretty_print {
 	} map {
 		$self->get_state( $_ );
 	} @states;
+};
+
+=head2 GETTERS
+
+=head3 id()
+
+Returns state machine schema unique identifier.
+
+Unless given explicitly to new(), defaults to generate_id() output.
+
+=cut
+
+sub id {
+	return $_[0]->{id};
+};
+
+=head3 initial_state()
+
+Returns initial state. Defaults to first added state,
+but may be overridden in constructor or add_state.
+
+=cut
+
+sub initial_state {
+	return $_[0]->{initial_state};
+};
+
+=head3 instance_class()
+
+Returns class that will be used for machine instances by default.
+This would be instantiated whenever spawn() is called.
+
+B<NOTE> There is NO requirement that SM instance using this schema
+must belong to this class.
+
+=cut
+
+sub instance_class {
+	return $_[0]->{instance_class};
+};
+
+=head3 is_final( $state_name )
+
+Tells whether $state_name is a final state in the current schema.
+
+B<NOTE> Invalid states are ignored, i.e. no exception.
+This may change in the future.
+
+B<NOTE> This method is normally not called directly -
+call $instance->is_final() instead.
+
+=cut
+
+sub is_final {
+	my ($self, $state) = @_;
+
+	return 1 if $self->{final_state}{$state};
+	# $self->_croak("Invalid state $state")
+	#     unless $self->{states}{$state};
+	return 0;
+};
+
+=head3 accepting( $state_name )
+
+Tells whether given state is an accepting state.
+Returns a true scalar denoting outcome type, or 0 if none.
+
+B<NOTE> Invalid states are ignored, i.e. no exception.
+This may change in the future.
+
+B<NOTE> This method is normally not called directly -
+call $instance->accepting() instead.
+
+=cut
+
+sub accepting {
+	my ($self, $state) = @_;
+	return $self->{accepting}{$state} || 0;
+};
+
+=head2 INTERNAL METHODS
+
+=head3 generate_id()
+
+Returns an unique id containing at least schema and instance class refs.
+
+B<NOTE> This is normally NOT called directly.
+
+=cut
+
+my $id;
+sub generate_id {
+	my $self = shift;
+
+	my $schema = ref $self;
+	my $instance = $self->{instance_class};
+
+	return "$schema<$instance>#".++$id;
 };
 
 =head1 AUTHOR
