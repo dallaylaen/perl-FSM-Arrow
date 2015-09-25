@@ -33,7 +33,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.0402;
+our $VERSION = 0.0403;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -114,6 +114,17 @@ sub state {
 		$self->{state} = $self->get_initial_state;
 	};
 	return $self->{state};
+};
+
+=head2 is_final()
+
+Tells whether current state is final.
+
+=cut
+
+sub is_final {
+	my $self = shift;
+	return $self->schema->is_final( $self->state );
 };
 
 =head2 get_initial_state()

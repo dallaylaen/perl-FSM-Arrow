@@ -14,9 +14,11 @@ use Test::More;
 
 my $sm = My::SM->new;
 
+is ($sm->is_final, 0, "!is_final");
 is ($sm->handle_event("boo"), "boo", "state handle ok");
 is ($sm->state, "finish", "came to final state");
 
+is ($sm->is_final, 1, " is_final");
 is ($sm->handle_event("far"), "far", "state handle value retained (final)");
 is ($sm->state, "finish", "no transition from final state");
 

@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0402;
+our $VERSION = 0.0403;
 
 =head1 DESCRIPTION
 
@@ -643,6 +643,23 @@ sub handle_event {
 
 sub _croak {
 	croak $_[0]->id.": $_[1]";
+};
+
+=head2 is_final( $state_name )
+
+Tells whether $state_name is a final state in the current schema.
+
+Invalid states are ignored, i.e. no exception. This may change in the future.
+
+=cut
+
+sub is_final {
+	my ($self, $state) = @_;
+
+	return 1 if $self->{final_state}{$state};
+	# $self->_croak("Invalid state $state")
+	#     unless $self->{states}{$state};
+	return 0;
 };
 
 =head2 generate_id()
