@@ -5,8 +5,6 @@ WISHLIST (past version, change that was suggested during that version)
 0.03 	TST push-down parser example (JSON?)
 0.03	TST ad-hoc parser example (aka ini file)
 0.03	DOC More rationale & basic SM discussion (?)
-0.03	API Define accepting states. Accepting = if stopped here, input's fine.
-0.03	API	Add is_final() to Instance.
 0.03	TST Add improved PSGI example to show inheritance power.
 0.04	TST Expect example (run external program, control execution flow,
 		enter passwd)
