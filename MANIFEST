@@ -37,3 +37,5 @@ example/markdown.pl
 README.md
 t/20-compat-salva.t
 example/bit-string-accepting.pl
+t/21-decl-transition.t
+lib/FSM/Arrow/Event.pm

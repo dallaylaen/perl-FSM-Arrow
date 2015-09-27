@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0405;
+our $VERSION = 0.0406;
 
 =head1 DESCRIPTION
 
@@ -117,10 +117,11 @@ See C<sm_state> below.
 
 use Carp;
 use Storable qw(dclone); # would rather use Clone, but is it ubiquitous?
+use Scalar::Util qw(blessed);
 use Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(sm_state sm_init);
-our %EXPORT_TAGS = ( class => [ 'sm_state', 'sm_init' ] );
+our @EXPORT_OK = qw( sm_init sm_state sm_transition );
+our %EXPORT_TAGS = ( class => [qw[ sm_init sm_state sm_transition ]] );
 
 our @CARP_NOT = qw(FSM::Arrow::Instance);
 
@@ -291,6 +292,22 @@ sub sm_state ($$@) { ## no critic
 
 	my $schema = __PACKAGE__->_sm_init_schema($caller);
 	$schema->add_state( $name => $handler, @options );
+};
+
+=head3 sm_transition 'event_type' => 'new_state', %options;
+
+=cut
+
+sub sm_transition($$@) { ## no critic
+	my ($types, $new_state, @options) = @_;
+	my $caller = caller;
+
+	my $schema = __PACKAGE__->_sm_init_schema($caller);
+	my $old_state = $schema->last_added_state;
+	croak "sm_transition: FATAL: no states added yet"
+		unless $old_state;
+	$schema->add_transition(
+		$old_state => $new_state, event => $types, @options );
 };
 
 sub _sm_init_schema {
@@ -465,7 +482,8 @@ sub clone {
 	);
 
 	$new->{$_} = _shallow_copy($self->{$_})
-		for qw(state_handler on_enter on_leave final_state accepting);
+		for qw(state_handler on_enter on_leave final_state accepting
+			event_types event_handler on_follow);
 	$new->{$_} = dclone($self->{$_})
 		for qw(transitions);
 
@@ -474,7 +492,7 @@ sub clone {
 
 sub _shallow_copy {
 	my $hash = shift;
-	return ref $hash ? { %$hash } : $hash;
+	return ref $hash eq 'HASH' ? { map { _shallow_copy($_) } %$hash } : $hash;
 };
 
 =head3 add_state( 'name' => HANDLER($instance, $event), %options )
@@ -526,7 +544,6 @@ sub add_state {
 				if @extra;
 	};
 
-
 	# now update self
 	# NOTE we MUST override ALL options
 	# just in case we're redefining an older state.
@@ -541,12 +558,48 @@ sub add_state {
 	exists $args{$_} and $self->{$_}{ $name } = $args{$_}
 		for qw(on_enter on_leave accepting);
 
+	# Don't forget to destroy typed transitions.
+	# NOTE this behavior may change in the future!
+	delete $self->{$_}{ $name }
+		for qw(event_types event_handler on_follow);
+
 	# Lock state. Note: this is released when object is cloned
 	#    to allow state overrides
 	$self->{state_lock}{$name}++;
+	$self->{last_added_state} = $name;
 
 	return $self;
 };
+
+=head3 add_transition( old_state => new_state, %options )
+
+Adds transition between states.
+old_state must be added via add_state at this point, however,
+new_state may not yet exist.
+
+=cut
+
+sub add_transition {
+	my ($self, $from, $to, %args) = @_;
+
+	my $events = $args{event};
+	$events = [] unless defined $events;
+	$events = [ $events ] unless ref $events eq 'ARRAY';
+
+	$self->{transitions}{$from} and $self->{transitions}{$from}{$to} = 1;
+
+	$self->{event_types}{$from}{$_} = $to for @$events;
+
+	if (my $handler = $args{handler}) {
+		$self->{event_handler}{$from}{$_} = $handler for @$events;
+	};
+
+	$self->{on_follow}{$from}{$to} = $args{on_follow}
+		if $args{on_follow};
+
+	$self;
+};
+
 
 # return true for undef OR anything callable
 sub _is_sub {
@@ -598,26 +651,43 @@ sub handle_event {
 	(my ($self, $instance), local $_) = @_;
 
 	my $old_state = $instance->state;
-	my $code = $self->{state_handler}{ $old_state };
+	my ($new_state, $ret);
 
-	my ($new_state, $ret) = $code->( $instance, $_ );
+	my $ev_type = blessed $_ && $_->isa("FSM::Arrow::Event") && $_->type;
 
+	# Determine next state:
+	if ( defined $ev_type
+		and $new_state = $self->{event_types}{$old_state}{ $ev_type }
+	) {
+		# if typed event is used, try hard transition (type-based)
+		my $handler = $self->{event_handler}{$old_state}{ $ev_type };
+		$handler and $ret = $handler->( $instance, $old_state, $new_state, $_ );
+	} else {
+		# otherwise, try soft transition (method-like)
+		my $handler = $self->{state_handler}{ $old_state };
+		($new_state, $ret) = $handler->( $instance, $_ );
+	};
+
+	# If state changed
 	if ($new_state and !$self->{final_state}{$old_state}) {
+		# check transition legality
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
 			unless exists $self->{state_handler}{ $new_state };
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(forbidden)")
 			if $self->{transitions}{ $old_state }
 				and !$self->{transitions}{ $old_state }{ $new_state };
-		# TODO check legal transitions if available
-		$self->{on_leave}{$old_state}->(
-				$instance, $old_state, $new_state, $_ )
-			if $self->{on_leave}{$old_state};
-		$self->{on_enter}{$new_state}->(
-				$instance, $old_state, $new_state, $_ )
-			if $self->{on_enter}{$new_state};
-		$self->{on_state_change}->(
-				$instance, $old_state, $new_state, $_ )
-			if $self->{on_state_change};
+
+		# execute callbacks: leave, enter, generic callback
+		foreach my $callback (
+			$self->{on_leave}{$old_state},
+			$self->{on_follow}{$old_state}{$new_state},
+			$self->{on_enter}{$new_state},
+			$self->{on_state_change},
+		) {
+			$callback and $callback->( $instance, $old_state, $new_state, $_ );
+		};
+
+		# finally, set state
 		$instance->state( $new_state );
 	};
 
@@ -796,6 +866,18 @@ sub generate_id {
 	my $instance = $self->{instance_class};
 
 	return "$schema<$instance>#".++$id;
+};
+
+=head3 last_added_state()
+
+Returns last state added via sm_state or add_state.
+
+B<NOTE> This is normally NOT called directly.
+
+=cut
+
+sub last_added_state {
+	return $_[0]->{last_added_state};
 };
 
 =head1 AUTHOR

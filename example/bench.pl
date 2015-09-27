@@ -11,6 +11,8 @@ use Time::HiRes qw(time);
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
+use FSM::Arrow::Event;
+
 my @types;
 {
 	package empty;
@@ -51,9 +53,33 @@ my @types;
 		getters => { schema => "schema" };
 	sm_state flip => sub { "flop" };
 	sm_state flop => sub { "flip" };
-	sub descr { "2 alterating states, no callbacks" };
+	sub descr { "2 alterating states, xs SM accessors" };
 	push @types, __PACKAGE__;
 
+	package flip_typed;
+	use FSM::Arrow qw(:class);
+
+	sm_state flip => sub {};
+	sm_transition "x" => 'flop';
+
+	sm_state flop => sub {};
+	sm_transition "x" => 'flip';
+	sub descr { "2 alterating states, hard transactions used" };
+	push @types, __PACKAGE__;
+
+	package flip_typed_xs;
+	use FSM::Arrow qw(:class);
+	use Class::XSAccessor
+		accessors => { state => "state" },
+		getters => { schema => "schema" };
+
+	sm_state flip => sub {};
+	sm_transition "x" => 'flop';
+
+	sm_state flop => sub {};
+	sm_transition "x" => 'flip';
+	sub descr { "2 alterating states, hard transactions used, xs" };
+	push @types, __PACKAGE__;
 };
 
 if (!@ARGV or $ARGV[0] eq '--help') {
@@ -96,10 +122,11 @@ while (@ARGV) {
 
 	my $sm = $type->new;
 	my $i = $count;
+	my $event = FSM::Arrow::Event->new( type => "x" );
 
 	my $t0 = time;
 	while ($i-->0) {
-		$sm->handle_event("x");
+		$sm->handle_event( $event );
 	};
 	my $spent = time - $t0;
 
