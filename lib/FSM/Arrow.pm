@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0406;
+our $VERSION = 0.0407;
 
 =head1 DESCRIPTION
 
@@ -296,6 +296,47 @@ sub sm_state ($$@) { ## no critic
 
 =head3 sm_transition 'event_type' => 'new_state', %options;
 
+Add explicit transition from last defined sm_state to another state.
+
+Such transitions are ONLY taken into account if incoming event
+belongs to L<FSM::Arrow::Event> or its descendant.
+The type() method is called on such event to determine event type.
+If type matches transition, main event handler is B<ignored>
+and type-local handler is used to determine return value
+if needed.
+
+'event_type' must be a string or array of strings.
+Unlike for states, empty and 0 are allowed.
+
+'new_state' must be a true string, and should be defined as a state
+at some point, maybe later.
+
+Options may include:
+
+=over
+
+=item * handler => CODEREF($instance, $old_state, $new_state, $event)
+
+Will be executed if present to determine what handler_event() should return.
+If it dies, no transition happens.
+Signature is the same as that of on_enter, on_leave etc.
+
+=item * on_follow => CODEREF($instance, $old_state, $new_state, $event)
+
+Will be executed if state changes from $old_state to $new_state,
+EVEN IF it changes via generic functional handler.
+
+The following pseudocode is perfectly valid:
+
+    sm_state foo => sub { return 'bar' };
+	sm_transition [] => 'bar', on_follow => sub { warn "foobared"; };
+
+=back
+
+B<NOTE>: Calling sm_transition automatically updates next state list,
+if present.
+C<sm_state ..., next => []> is ok.
+
 =cut
 
 sub sm_transition($$@) { ## no critic
@@ -577,10 +618,20 @@ Adds transition between states.
 old_state must be added via add_state at this point, however,
 new_state may not yet exist.
 
+Both old_state and new_state must be true strings
+(just like any state name).
+
+See C<sm_transition> above for detailed discussion of %options.
+
 =cut
 
 sub add_transition {
 	my ($self, $from, $to, %args) = @_;
+
+	$self->_croak( "add_transition: old_state must be a true string" )
+		unless $from and !ref $from;
+	$self->_croak( "add_transition: new_state must be a true string" )
+		unless $to and !ref $to;
 
 	my $events = $args{event};
 	$events = [] unless defined $events;
