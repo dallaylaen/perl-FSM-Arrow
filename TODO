@@ -8,8 +8,6 @@ WISHLIST (past version, change that was suggested during that version)
 0.03	TST Add improved PSGI example to show inheritance power.
 0.04	TST Expect example (run external program, control execution flow,
 		enter passwd)
-0.04	API Add typed events + strict transitions
-		transition: event_type => new_state => code
 
 FAR WISHLIST (past version, change that was suggested during that version)
 0.03	DEV state graph object, stringify
@@ -18,13 +16,14 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.03	TST Add distributed connected machines example.
 0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
 0.03	API Event preprocessor callback
-0.03	API Make Instance methods (CONTRACT) more consistent.
-		Like no new() params, but both set_state and set_schema present.
+0.03	API CONTRACT Require schema and state defined after construction
 0.04	API stricture - require ALL states to have next => [...]
 0.04	API next=>[] means final
 0.04	TST nested machine example - low-level machine assembling events
 		for high-level one
 0.04	TST inherited machine example
+0.04	REF redo machine schema internal structure
+0.04	REF Use XS when available
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?
