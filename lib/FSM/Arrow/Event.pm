@@ -9,7 +9,7 @@ FSM::Arrow::Event - event base class for FSM::Arrow state machine.
 
 =cut
 
-our $VERSION = 0.0406;
+our $VERSION = 0.05;
 
 =head1 METHODS
 

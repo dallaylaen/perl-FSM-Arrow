@@ -33,7 +33,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.0404;
+our $VERSION = 0.05;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.

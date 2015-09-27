@@ -1,5 +1,13 @@
 Revision history for FSM-Arrow
 
+0.04	Sun Sep 27 2015
+        API Add typed events (FSM::Arrow::Event),
+            add typed transitions (sm_transition ev_name => next_state)
+        API Add 'accepting' parameter to sm_state
+        API Add is_final() method to determine whether state's final
+        API Make API compatible with that of Salva's Class::StateMachine
+        DOC Add readme.md, more docs
+
 0.04	Mon Sep 7 2015
 		TST Add some examples (psgi web service, line-by-line, bit string x3)
 		TST Add benchmarking tool with simple meaningless SMs
