@@ -13,12 +13,15 @@ BEGIN {
 };
 
 {
-	package My::Machine;
+	package My::SM::Simple;
 
 	use Moose;
 	use FSM::Arrow qw(:class);
 
 	has last_state => is => "rw";
+	sub BUILD {
+		$_[0]->sm_on_construction;
+	};
 
 	sm_state initial => sub {
 		my ($self, $event) = @_;
@@ -32,20 +35,25 @@ BEGIN {
 		return 0 => $self->last_state;
 	};
 
-	package My::Redefine;
+	package My::SM::Detailed;
 	use Moose;
 	use FSM::Arrow qw(:class);
 
 	has schema => is => "ro",
-		default => sub { FSM::Arrow::get_default_sm( ref $_[0] )};
-	has state => is => "rw",
-		default => sub { $_[0]->schema->initial_state }, lazy => 1;
+		default => sub { $_[0]->get_default_sm };
+	has state => is => "rw";
+	sub BUILD {
+		my $self = shift;
+		$self->state( $self->schema->initial_state )
+			unless $self->state;
+	};
 
 	sm_state one => sub { "two" };
 	sm_state two => sub {}, final => 1;
 };
 
-my $sm = My::Machine->new;
+note "First SM";
+my $sm = My::SM::Simple->new;
 
 is ($sm->state, 'initial', "initial state holds");
 is (ref $sm->schema, 'FSM::Arrow', "Schema ref correct");
@@ -63,7 +71,8 @@ $ret = $sm->handle_event("go more");
 is ($ret, 'initial', "final handler => last state");
 is ($sm->state, 'final', "final handler => no state change");
 
-$sm = My::Redefine->new;
+note "Another SM";
+$sm = My::SM::Detailed->new;
 
 is ($sm->state, "one", "default state ok");
 $sm->handle_event("xxx");

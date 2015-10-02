@@ -33,7 +33,7 @@ SUPER::handle_event;
 
 =cut
 
-our $VERSION = 0.05;
+our $VERSION = 0.0501;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -66,7 +66,7 @@ sub new {
 		if @_ % 2;
 
 	my %args = @_;
-	$args{schema} ||= $FSM::Arrow::sm_schema{ $class };
+	$args{schema} ||= $class->get_default_sm;
 	$args{state}  ||= $args{schema} && $args{schema}->initial_state;
 	return bless \%args, $class;
 };
@@ -105,15 +105,9 @@ B<NOTE> This is normally NOT called directly.
 sub state {
 	my $self = shift;
 
-	if (@_) {
-		$self->{state} = shift;
-		return $self;
-	};
-
-	if (!exists $self->{state}) {
-		$self->{state} = $self->get_initial_state;
-	};
-	return $self->{state};
+	return $self->{state} unless @_;
+	$self->{state} = shift;
+	return $self;
 };
 
 =head2 is_final()
@@ -140,15 +134,6 @@ sub accepting {
 	return $self->schema->accepting( $self->state );
 };
 
-=head2 get_initial_state()
-
-=cut
-
-sub get_initial_state {
-	my $sm = $_[0]->schema;
-	return $sm && $sm->initial_state;
-};
-
 =head2 schema()
 
 Returns state machine schema.
@@ -156,11 +141,75 @@ Returns state machine schema.
 =cut
 
 sub schema {
+	return $_[0]->{schema};
+};
+
+=head2 EXTENDING
+
+If you are going to replace new() or otherwise change object construction,
+call C<sm_on_construction> somewhere in your constructor so that state machine
+keeps working as expected.
+
+If you use Moose:
+
+    package My::SM;
+    use Moose;
+    use FSM::Arrow qw(:class);
+    # ... lots of definitions
+    sub BUILD { $_[0]->sm_on_construction };
+
+If you use fields:
+
+    package My::SM;
+    use fields qw(schema state); # and probably more fields there
+    use FSM::Arrow qw(:class);
+    # ... lots of definitions
+    sub new {
+        my $class = shift;
+		my $self = fields::new( $class );
+		# set up fields
+		$self->sm_on_construction;
+    }
+
+B<NOTE> This sub sets C<$self-\>{schema}> directly.
+This may change in the future.
+However, getting schema and getting/setting state are done via accessors,
+and this is going to stay.
+
+=head3 sm_on_construction
+
+Receives no arguments.
+Sets schema and state, if possible.
+Returns self.
+
+=cut
+
+sub sm_on_construction {
 	my $self = shift;
 
-	$self->{schema} = $FSM::Arrow::sm_schema{ ref $self }
-		unless exists $self->{schema};
-	return $self->{schema};
+	my $schema; # some caching for the sake of premature optimisation
+	if (!($schema = $self->schema)) {
+		$schema = $self->get_default_sm;
+		$self->{schema} = $schema; # schema is a r/o accessor, so do like this
+	};
+	if ($schema and !$self->state) {
+		$self->state( $schema->initial_state );
+	};
+
+	return $self;
+};
+
+=head3 get_default_sm
+
+Returns FSM::Arrow machine for a SM class defined via declarative interface.
+
+Dies unless declarative interface was indeed used.
+
+=cut
+
+sub get_default_sm {
+	croak "FSM::Arrow::Instance: 'schema' argument missing in constructor"
+		." and declarative API not in use";
 };
 
 1;

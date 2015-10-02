@@ -32,7 +32,7 @@ use fields qw(state schema);
 use FSM::Arrow qw(:class);
 
 sub new {
-	return fields::new(shift);
+	fields::new(shift)->sm_on_construction;
 };
 
 sm_state initial => sub {

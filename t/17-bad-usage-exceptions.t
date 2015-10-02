@@ -22,6 +22,13 @@ eval {
 };
 like $@, qr/[Oo]dd.*new/, "exception on bad new() usage";
 
+use FSM::Arrow::Instance;
+eval {
+	FSM::Arrow::Instance->new;
+};
+like $@, qr/FSM::Arrow.*constructor.*decl/,
+	"exception on missing new() params";
+
 ok (!@warn, "No warnings emitted");
 diag "WARNING: $_" for @warn;
 

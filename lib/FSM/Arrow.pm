@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.05;
+our $VERSION = 0.0501;
 
 =head1 DESCRIPTION
 
@@ -357,11 +357,13 @@ sub _sm_init_schema {
 	# memoize
 	return $sm_schema{ $caller } ||= do {
 		my $sm = $class->new( instance_class => $caller, @args );
+		my $get_default_sm = sub { return $sm };
 
 		# Now magic - alter target package
 		no strict 'refs';         ## no critic
 
 		push @{ $caller.'::'.'ISA' }, 'FSM::Arrow::Instance';
+		*{ $caller.'::'.'get_default_sm' } = $get_default_sm;
 
 		$sm;
 	};
@@ -375,17 +377,14 @@ MUST exhibit the following properties for the machine to work correctly.
 C<$instance> must be a descendant of L<FSM::Arrow::Instance> class.
 This is enforced by the first use of sm_init or sm_state.
 
-C<$instance->scheme()> method must be present.
+C<$instance-\>scheme()> getter method must be present.
 Its return value must be the same C<FSM::Arrow> object
 throughout the instance lifetime.
 
-C<$instance->state(...)> accessor must be present.
-
-When given no argument, it must return the last value given to it,
-or C<$instance->scheme->initial_state> if none available.
+C<$instance-\>state( [new_value] )> accessor method must be present.
 
 $instance->handle_event($event) method must be left intact, or call
-C<$instance->scheme->handle_event($instance, $event)>
+C<$instance-\>scheme-\>handle_event($instance, $event)>
 at some point if redefined.
 
 The following methods are present in FSM::Arrow::Instance,
@@ -395,34 +394,14 @@ handle_event per se:
 C<is_final>, C<accepting>, C<get_initial_state>.
 
 Additionally, if used with OO interface (see below), the constructor
-must be named C<new()>, and must accept C<new(schema => $object)> parameters
-resulting in that very object being returned by C<scheme> method.
+must be named C<new()>, and must accept at least
+C<new(schema =\> $object)> parameters.
 
-All of these methods are implemented in exactly that way
-in FSM::Arrow::Instance under assumption
-that self is a blessed hash and keys C<state> and C<schema> are available.
+If FSM::Arrow::Instance constructor is used, no additional action is required.
 
-If Moose is used, no additional care has to be taken (unless these methods
-are overridden).
-
-If C<use fields> is used, adding C<state> and C<schema> to the fields list
-is required.
-
-The following function can be used to fetch exactly th FSM::Arrow instance
-used by sm_init/sm_state.
-
-=head3 get_default_sm( $class )
-
-Return state machine set up via declarative interface.
-
-Can be called as both FSM::Arrow::get_default_sm and
-FSM::Arrow->get_default_sm - it only cares about last argument.
-
-=cut
-
-sub get_default_sm {
-	return $sm_schema{ $_[-1] };
-};
+If constructor is defined from scratch, C<sm_on_construction> method
+should be called at some point.
+See section EXTENDING in L<FSM::Arrow::Instance>.
 
 =head1 OBJECT-ORIENTED INTERFACE
 
