@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0501;
+our $VERSION = 0.0502;
 
 =head1 DESCRIPTION
 
@@ -377,11 +377,13 @@ MUST exhibit the following properties for the machine to work correctly.
 C<$instance> must be a descendant of L<FSM::Arrow::Instance> class.
 This is enforced by the first use of sm_init or sm_state.
 
-C<$instance-\>scheme()> getter method must be present.
+C<$instance-\>schema()> getter method must be present.
 Its return value must be the same C<FSM::Arrow> object
 throughout the instance lifetime.
 
 C<$instance-\>state( [new_value] )> accessor method must be present.
+
+Constructor must set both state and schema.
 
 $instance->handle_event($event) method must be left intact, or call
 C<$instance-\>scheme-\>handle_event($instance, $event)>
@@ -393,14 +395,17 @@ handle_event per se:
 
 C<is_final>, C<accepting>, C<get_initial_state>.
 
-Additionally, if used with OO interface (see below), the constructor
-must be named C<new()>, and must accept at least
+Additionally, if OO interface's method spawn() is in use (see below),
+the constructor must be named C<new()>, and must accept at least
 C<new(schema =\> $object)> parameters.
 
 If FSM::Arrow::Instance constructor is used, no additional action is required.
 
 If constructor is defined from scratch, C<sm_on_construction> method
 should be called at some point.
+Alternativaly, schema may be found out via get_default_sm() method
+and state can be set manually afterwards.
+
 See section EXTENDING in L<FSM::Arrow::Instance>.
 
 =head1 OBJECT-ORIENTED INTERFACE
