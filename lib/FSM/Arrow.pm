@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0503;
+our $VERSION = 0.0504;
 
 =head1 DESCRIPTION
 
@@ -116,7 +116,6 @@ See C<sm_state> below.
 =cut
 
 use Carp;
-use Storable qw(dclone); # would rather use Clone, but is it ubiquitous?
 use Scalar::Util qw(blessed);
 use Exporter;
 our @ISA = qw(Exporter);
@@ -506,14 +505,18 @@ sub clone {
 		%args,
 	);
 
-	$new->{states} = _shallow_copy($self->{states});
+	$new->{states} = _deep_copy($self->{states});
 
 	return $new;
 };
 
-sub _shallow_copy {
+# Clone routine.
+# Clone hashes, leave everything else (objects, subs) as is
+# Storable::dclone cannot into subs
+# TODO Performance sucks, but do we need better?
+sub _deep_copy {
 	my $hash = shift;
-	return ref $hash eq 'HASH' ? { map { _shallow_copy($_) } %$hash } : $hash;
+	return ref $hash eq 'HASH' ? { map { _deep_copy($_) } %$hash } : $hash;
 };
 
 =head3 add_state( 'name' => HANDLER($instance, $event), %options )
@@ -623,6 +626,8 @@ sub add_transition {
 	$events = [ $events ] unless ref $events eq 'ARRAY';
 
 	my $state = $self->{states}{$from};
+	$self->_croak( "add_transition: non-looped transition from final state" )
+		if $state->{final} and $from ne $to;
 
 	$state->{next} and $state->{next}{$to} = 1;
 
@@ -767,7 +772,7 @@ sub get_state {
 	$self->_croak("get_state(): No state named '$name'")
 		unless exists $self->{states}{ $name };
 
-	my $data = _shallow_copy( $self->{states}{$name} );
+	my $data = _deep_copy( $self->{states}{$name} );
 
 	# mangle data for sake of round-trip
 	$data->{next} and $data->{next} = [ keys %{ $data->{next} } ];
