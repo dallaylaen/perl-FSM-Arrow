@@ -32,7 +32,8 @@ is ($inspect->{on_leave}->(),  "leave",     " on_leave (result)");
 is ($inspect->{accepting},     0,           "!accepting");
 is_deeply( [ sort keys %$inspect ],
 	[ sort qw( name handler initial final next on_enter on_leave accepting ) ],
-	"No extra keys");
+	"No extra keys")
+		or diag explain $inspect;
 
 note "inspect 'end'";
 $inspect = $sm->get_state( "end" );

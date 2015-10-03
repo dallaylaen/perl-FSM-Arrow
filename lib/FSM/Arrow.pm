@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0502;
+our $VERSION = 0.0503;
 
 =head1 DESCRIPTION
 
@@ -506,11 +506,7 @@ sub clone {
 		%args,
 	);
 
-	$new->{$_} = _shallow_copy($self->{$_})
-		for qw(state_handler on_enter on_leave final_state accepting
-			event_types event_handler on_follow);
-	$new->{$_} = dclone($self->{$_})
-		for qw(transitions);
+	$new->{states} = _shallow_copy($self->{states});
 
 	return $new;
 };
@@ -573,23 +569,28 @@ sub add_state {
 	# NOTE we MUST override ALL options
 	# just in case we're redefining an older state.
 	# Except for callbacks which may stay.
-	$self->{state_handler}{$name} = $code;
-	$self->{initial_state} = $name
-		if $args{initial} or !defined $self->{initial_state};
-	$self->{final_state}{$name} = $args{final} ? 1 : 0;
-	$self->{transitions}{ $name } = $args{next}
+
+	# TODO make state an object?
+	my $state = {
+		name => $name,
+		handler => $code,
+	};
+	if ( $args{initial} or !defined $self->{initial_state} ) {
+		$state->{initial} = 1;
+		$self->{initial_state} = $name;
+	};
+
+	$state->{final} = $args{final} ? 1 : 0;
+
+	$state->{next} = $args{next}
 		? _array_to_hash( $args{next} )
 		: undef;
-	exists $args{$_} and $self->{$_}{ $name } = $args{$_}
+	exists $args{$_} and $state->{$_} = $args{$_}
 		for qw(on_enter on_leave accepting);
-
-	# Don't forget to destroy typed transitions.
-	# NOTE this behavior may change in the future!
-	delete $self->{$_}{ $name }
-		for qw(event_types event_handler on_follow);
 
 	# Lock state. Note: this is released when object is cloned
 	#    to allow state overrides
+	$self->{states}{$name} = $state;
 	$self->{state_lock}{$name}++;
 	$self->{last_added_state} = $name;
 
@@ -621,15 +622,17 @@ sub add_transition {
 	$events = [] unless defined $events;
 	$events = [ $events ] unless ref $events eq 'ARRAY';
 
-	$self->{transitions}{$from} and $self->{transitions}{$from}{$to} = 1;
+	my $state = $self->{states}{$from};
 
-	$self->{event_types}{$from}{$_} = $to for @$events;
+	$state->{next} and $state->{next}{$to} = 1;
+
+	$state->{event_types}{$_} = $to for @$events;
 
 	if (my $handler = $args{handler}) {
-		$self->{event_handler}{$from}{$_} = $handler for @$events;
+		$state->{event_handler}{$_} = $handler for @$events;
 	};
 
-	$self->{on_follow}{$from}{$to} = $args{on_follow}
+	$state->{on_follow}{$to} = $args{on_follow}
 		if $args{on_follow};
 
 	$self;
@@ -687,36 +690,36 @@ sub handle_event {
 
 	my $old_state = $instance->state;
 	my ($new_state, $ret);
+	my $rules = $self->{states}{$old_state};
 
 	my $ev_type = blessed $_ && $_->isa("FSM::Arrow::Event") && $_->type;
 
 	# Determine next state:
 	if ( defined $ev_type
-		and $new_state = $self->{event_types}{$old_state}{ $ev_type }
+		and $new_state = $rules->{event_types}{ $ev_type }
 	) {
 		# if typed event is used, try hard transition (type-based)
-		my $handler = $self->{event_handler}{$old_state}{ $ev_type };
+		my $handler = $rules->{event_handler}{ $ev_type };
 		$handler and $ret = $handler->( $instance, $old_state, $new_state, $_ );
 	} else {
 		# otherwise, try soft transition (method-like)
-		my $handler = $self->{state_handler}{ $old_state };
+		my $handler = $rules->{handler};
 		($new_state, $ret) = $handler->( $instance, $_ );
 	};
 
 	# If state changed
-	if ($new_state and !$self->{final_state}{$old_state}) {
+	if ($new_state and !$rules->{final}) {
 		# check transition legality
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
-			unless exists $self->{state_handler}{ $new_state };
+			unless exists $self->{states}{ $new_state };
 		$self->_croak("Illegal transition '$old_state'->'$new_state'(forbidden)")
-			if $self->{transitions}{ $old_state }
-				and !$self->{transitions}{ $old_state }{ $new_state };
+			if $rules->{next} and !$rules->{next}{ $new_state };
 
 		# execute callbacks: leave, enter, generic callback
 		foreach my $callback (
-			$self->{on_leave}{$old_state},
-			$self->{on_follow}{$old_state}{$new_state},
-			$self->{on_enter}{$new_state},
+			$rules->{on_leave},
+			$rules->{on_follow}{$new_state},
+			$self->{states}{$new_state}{on_enter},
 			$self->{on_state_change},
 		) {
 			$callback and $callback->( $instance, $old_state, $new_state, $_ );
@@ -755,28 +758,22 @@ sub list_states {
 	my $self = shift;
 
 	my $first = $self->initial_state;
-	return $first, grep { $_ ne $first } keys %{ $self->{state_handler} };
+	return $first, grep { $_ ne $first } keys %{ $self->{states} };
 };
 
 sub get_state {
 	my ($self, $name) = @_;
 
 	$self->_croak("get_state(): No state named '$name'")
-		unless exists $self->{state_handler}{ $name };
+		unless exists $self->{states}{ $name };
 
-	my $next = $self->{transitions}{ $name };
-	$next = $next ? [ keys %$next ] : undef;
+	my $data = _shallow_copy( $self->{states}{$name} );
 
-	return {
-		name       => $name,
-		handler    => $self->{state_handler}{ $name },
-		final      => $self->{final_state}{ $name } ? 1 : 0,
-		next       => $next,
-		on_enter   => $self->{on_enter}{$name},
-		on_leave   => $self->{on_leave}{$name},
-		initial    => $self->initial_state eq $name ? 1 : 0,
-		accepting  => $self->{accepting}{$name} || 0,
-	};
+	# mangle data for sake of round-trip
+	$data->{next} and $data->{next} = [ keys %{ $data->{next} } ];
+	$data->{$_} ||= 0 for qw(accepting initial);
+	$data->{$_} ||= undef for qw(on_enter on_leave);
+	return $data;
 };
 
 =head3 pretty_print
@@ -859,10 +856,9 @@ call $instance->is_final() instead.
 sub is_final {
 	my ($self, $state) = @_;
 
-	return 1 if $self->{final_state}{$state};
 	# $self->_croak("Invalid state $state")
 	#     unless $self->{states}{$state};
-	return 0;
+	return $self->{states}{$state}{final};
 };
 
 =head3 accepting( $state_name )
@@ -880,7 +876,7 @@ call $instance->accepting() instead.
 
 sub accepting {
 	my ($self, $state) = @_;
-	return $self->{accepting}{$state} || 0;
+	return $self->{states}{$state}{accepting} || 0;
 };
 
 =head2 INTERNAL METHODS
