@@ -13,6 +13,8 @@ use lib "$Bin/../lib";
 
 use FSM::Arrow::Event;
 
+my $has_xs = eval { require Class::XSAccessor; 1; };
+
 my @types;
 {
 	package empty;
@@ -44,7 +46,8 @@ my @types;
 	sm_state flop => sub { "flip" }, on_enter => sub { };
 	sub descr { "2 alterating states, with 1 callbacks each" };
 	push @types, __PACKAGE__;
-
+};
+if ($has_xs) {
 	package flip_xs;
 	use FSM::Arrow qw(:class);
 
@@ -55,8 +58,9 @@ my @types;
 	sm_state flop => sub { "flip" };
 	sub descr { "2 alterating states, xs SM accessors" };
 	push @types, __PACKAGE__;
-
-	package flip_typed;
+};
+{
+	package typed;
 	use FSM::Arrow qw(:class);
 
 	sm_state flip => sub {};
@@ -64,10 +68,15 @@ my @types;
 
 	sm_state flop => sub {};
 	sm_transition "x" => 'flip';
-	sub descr { "2 alterating states, hard transactions used" };
-	push @types, __PACKAGE__;
 
-	package flip_typed_xs;
+	sub descr { "2 alterating states, hard transactions used" };
+	sub get_event {
+		FSM::Arrow::Event->new( type => "x" );
+	};
+	push @types, __PACKAGE__;
+};
+if ($has_xs) {
+	package typed_xs;
 	use FSM::Arrow qw(:class);
 	use Class::XSAccessor
 		accessors => { state => "state" },
@@ -78,7 +87,28 @@ my @types;
 
 	sm_state flop => sub {};
 	sm_transition "x" => 'flip';
+
 	sub descr { "2 alterating states, hard transactions used, xs" };
+	sub get_event {
+		FSM::Arrow::Event->new( type => "x" );
+	};
+	push @types, __PACKAGE__;
+};
+
+{
+	package typed_make_event;
+	sub descr { "Makes event via callback" };
+
+	use FSM::Arrow qw(:class);
+	sm_init on_check_event => FSM::Arrow::Event->generator_regex(
+		regex => "(.)" );
+
+	sm_state flip => sub {};
+	sm_transition x => "flop";
+
+	sm_state flop => sub {};
+	sm_transition x => "flip";
+
 	push @types, __PACKAGE__;
 };
 
@@ -122,7 +152,9 @@ while (@ARGV) {
 
 	my $sm = $type->new;
 	my $i = $count;
-	my $event = FSM::Arrow::Event->new( type => "x" );
+	my $event = $sm->can("get_event")
+		? $sm->get_event
+		: "x";
 
 	my $t0 = time;
 	while ($i-->0) {
