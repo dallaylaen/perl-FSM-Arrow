@@ -15,7 +15,6 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.03	API state redefine properties w/o changing sub
 0.03	TST Add distributed connected machines example.
 0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
-0.03	API Event preprocessor callback
 0.04	API stricture - require ALL states to have next => [...]
 0.04	API next=>[] means final
 0.04	TST nested machine example - low-level machine assembling events

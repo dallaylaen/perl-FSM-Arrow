@@ -41,3 +41,5 @@ t/20-compat-salva.t
 t/21-decl-transition.t
 t/22-oop-decl-together.t
 t/23-decl-check-event.t
+t/24-event-gen.t
+t/24-event-gen.t
