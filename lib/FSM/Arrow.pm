@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0504;
+our $VERSION = 0.0505;
 
 =head1 DESCRIPTION
 
@@ -155,6 +155,11 @@ in the sm_state section below.
 May be useful for debugging, logging etc.
 
 B<NOTE> Exception in this callback would cancel the transition.
+
+=item * on_event_check => CODE($event)
+
+If set, incoming event will be replaced by whatever is returned by CODE
+before proceeding to event handler.
 
 =back
 
@@ -446,17 +451,24 @@ provided that it follows CONTRACT (see above).
 
 =head3 new( %args )
 
-Args may include:
+Constructor.
+
+%args may include:
 
 =over
 
-=item * instance_class - the class the machine instances belong to.
-Default is FSM::Arrow::Instance;
+=item * id - This machine id. If unset, a sane default is provided.
 
-=item * initial_state - inintial machine state.
-Default is the first state defined by add_state();
+=item * parent - if set, clone machine instead.
+
+=item * instance_class - if set, use that class for instances (see spawn).
+The default is FSM::Arrow::Instance.
+
+B<NOTE> This does not prohibit using this machine with any other instance class.
 
 =back
+
+See C<sm_init> above for the rest of possible options.
 
 =cut
 
@@ -465,6 +477,8 @@ sub new {
 
 	croak __PACKAGE__."->new: on_state_change must be a subroutine"
 		unless _is_sub($args{on_state_change});
+	croak __PACKAGE__."->new: on_check_event must be a subroutine"
+		unless _is_sub($args{on_check_event});
 	if (my $parent = delete $args{parent}) {
 		return $parent->clone( %args );
 	};
@@ -475,6 +489,7 @@ sub new {
 		instance_class   => $args{instance_class},
 		initial_state    => $args{initial_state},
 		on_state_change  => $args{on_state_change},
+		on_check_event   => $args{on_check_event},
 		id               => $args{id},
 	}, $class;
 
@@ -693,6 +708,10 @@ sub handle_event {
 	# Premature optimization, thats it...
 	(my ($self, $instance), local $_) = @_;
 
+	# Coerce event, if needed...
+	$_ = $self->{on_check_event}->($_)
+		if $self->{on_check_event};
+
 	my $old_state = $instance->state;
 	my ($new_state, $ret);
 	my $rules = $self->{states}{$old_state};
@@ -721,12 +740,14 @@ sub handle_event {
 			if $rules->{next} and !$rules->{next}{ $new_state };
 
 		# execute callbacks: leave, enter, generic callback
-		foreach my $callback (
-			$rules->{on_leave},
-			$rules->{on_follow}{$new_state},
-			$self->{states}{$new_state}{on_enter},
-			$self->{on_state_change},
-		) {
+		my $cblist = $rules->{cache_cb}{$new_state} ||= [
+			grep { defined $_ }
+            $rules->{on_leave},
+            $rules->{on_follow}{$new_state},
+            $self->{states}{$new_state}{on_enter},
+            $self->{on_state_change},
+		];
+		foreach my $callback ( @$cblist ) {
 			$callback and $callback->( $instance, $old_state, $new_state, $_ );
 		};
 
@@ -778,6 +799,7 @@ sub get_state {
 	$data->{next} and $data->{next} = [ keys %{ $data->{next} } ];
 	$data->{$_} ||= 0 for qw(accepting initial);
 	$data->{$_} ||= undef for qw(on_enter on_leave);
+	delete $data->{cache_cb};
 	return $data;
 };
 

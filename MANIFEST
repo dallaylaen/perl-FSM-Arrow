@@ -40,3 +40,4 @@ t/19-decl-new-params.t
 t/20-compat-salva.t
 t/21-decl-transition.t
 t/22-oop-decl-together.t
+t/23-decl-check-event.t
