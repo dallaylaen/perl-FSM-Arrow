@@ -14,6 +14,7 @@ use lib "$Bin/../lib";
 use FSM::Arrow::Event;
 
 my $has_xs = eval { require Class::XSAccessor; 1; };
+my $has_class_sm = eval { require Class::StateMachine; 1; };
 
 my @types;
 {
@@ -108,6 +109,29 @@ if ($has_xs) {
 
 	sm_state flop => sub {};
 	sm_transition x => "flip";
+
+	push @types, __PACKAGE__;
+};
+
+if ($has_class_sm) {
+	package salva;
+	sub descr { "Use Class::StateMachine, if available" };
+
+	# Use base by hand
+	require Class::StateMachine;
+	Class::StateMachine->import();
+	our @ISA = qw(Class::StateMachine);
+
+	use FSM::Arrow qw(:class);
+
+	sub new {
+		my $class = shift;
+		my $self = $class->SUPER::new(@_);
+		Class::StateMachine::bless( $self, $class, $self->{state} );
+	};
+
+	sm_state flip => sub { "flop" };
+	sm_state flop => sub { "flip" };
 
 	push @types, __PACKAGE__;
 };
