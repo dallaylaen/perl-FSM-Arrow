@@ -24,8 +24,8 @@ This may be useful in a daemon, web service, and so on.
 * Inheritance. If needed, existing machine can be extended with 
 extra or slightly different states.
 
-* Compatibility. Instance class may be enhanced via Moose, Class::XSAccesor,
-fields w/o breaking the machine.
+* Compatibility. Can play along with Moose, Class::XSAccesor,
+fields, and Class::StateMachine w/o breaking the machine.
 
 * Optional transition restrictions (list of possible next states, final state).
 
