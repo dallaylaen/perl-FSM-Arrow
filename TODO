@@ -8,6 +8,7 @@ WISHLIST (past version, change that was suggested during that version)
 		enter passwd)
 0.04	REF Use XS when available
 0.05	API Allow sm_state w/o handler sub
+0.05	API FSM::Arrow::Util - handler & cb generator
 
 FAR WISHLIST (past version, change that was suggested during that version)
 0.02	TST anyevent example
@@ -27,6 +28,7 @@ FAR WISHLIST (past version, change that was suggested during that version)
 			(but what with return values?)
 0.05	API return value callback
 0.05	API sm_transition locking (like states) & uniqueness check
+0.05	API restrict sm_* to only known parameter values.
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?

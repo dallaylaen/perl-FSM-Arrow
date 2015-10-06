@@ -101,8 +101,8 @@ if ($has_xs) {
 	sub descr { "Makes event via callback" };
 
 	use FSM::Arrow qw(:class);
-	sm_init on_check_event => FSM::Arrow::Event->generator_regex(
-		regex => "(.)" );
+	use FSM::Arrow::Util qw(event_maker_regex);
+	sm_init on_check_event => event_maker_regex( regex => "(.)" );
 
 	sm_state flip => sub {};
 	sm_transition x => "flop";

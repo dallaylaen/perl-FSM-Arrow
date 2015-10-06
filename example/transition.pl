@@ -15,9 +15,9 @@ use lib "$Bin/../lib";
 {
 	package My::Earth;
 	use FSM::Arrow qw(:class);
-	use FSM::Arrow::Event;
+	use FSM::Arrow::Util qw(event_maker_regex);
 
-	sm_init on_check_event => FSM::Arrow::Event->generator_regex(
+	sm_init on_check_event => event_maker_regex(
 			regex => qr<(east|west|north|south|stay)>i
 		),
 		on_state_change => sub { print "Going from $_[1] to $_[2]!\n" };

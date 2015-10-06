@@ -4,14 +4,13 @@ use strict;
 use warnings;
 use Test::More;
 
-use FSM::Arrow::Event;
-
+use FSM::Arrow::Util qw(event_maker_regex);
 
 my $ev;
 my $gen;
 
 note "Rex generator 1";
-$gen = FSM::Arrow::Event->generator_regex( regex => qr/(\w+)/ );
+$gen = event_maker_regex( regex => qr/(\w+)/ );
 
 $ev = $gen->( "foo bar" );
 is (ref $ev, "FSM::Arrow::Event", "Ev ref holds");
@@ -26,7 +25,7 @@ like ($@, qr(event.*match), "Bad events shall not pass");
 
 if ($] > 5.010) {
 	note "Rex generator 2 - with named capture";
-	$gen = FSM::Arrow::Event->generator_regex(
+	$gen = event_maker_regex(
 		regex => q/((\d+\.)\s+)?(?<type>[a-z]\w*)(\s+(?<number>\d+))?/,
 	);
 
