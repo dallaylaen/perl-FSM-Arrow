@@ -21,6 +21,7 @@ FAR WISHLIST (past version, change that was suggested during that version)
 		for high-level one
 0.04	TST inherited machine example
 0.04	REF Use XS when available
+0.05	API Allow sm_state w/o handler sub
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?

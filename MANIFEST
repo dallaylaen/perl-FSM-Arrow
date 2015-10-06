@@ -44,3 +44,4 @@ t/23-decl-check-event.t
 t/24-event-gen.t
 t/24-event-gen.t
 t/99-examples-live.t
+example/transition.pl

@@ -13,6 +13,9 @@ like ($output, qr(\d+), "Lots of digits in bench output");
 ok ($output = run_script( "bit-string.pl", 1, 11, 111, 101 ));
 like ($output, qr<11\n1001\n10101\n1111\n>s, "x3 works");
 
+ok ($output = run_script( "transition.pl", "west", "west" ));
+like ($output, qr<from.*to>, "transition example works");
+
 done_testing;
 
 # TODO More defensive programming. Open2? Open3?
