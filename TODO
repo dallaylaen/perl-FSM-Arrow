@@ -1,15 +1,17 @@
 ROADMAP (future version, change required for that version)
 
 WISHLIST (past version, change that was suggested during that version)
-0.02	TST anyevent example
 0.03 	TST push-down parser example (JSON?)
 0.03	TST ad-hoc parser example (aka ini file)
-0.03	DOC More rationale & basic SM discussion (?)
 0.03	TST Add improved PSGI example to show inheritance power.
 0.04	TST Expect example (run external program, control execution flow,
 		enter passwd)
+0.04	REF Use XS when available
+0.05	API Allow sm_state w/o handler sub
 
 FAR WISHLIST (past version, change that was suggested during that version)
+0.02	TST anyevent example
+0.03	DOC More rationale & basic SM discussion (?)
 0.03	DEV state graph object, stringify
 0.03	DEV per machine stats (now many in which state) (do we need it? )
 0.03	API state redefine properties w/o changing sub
@@ -20,8 +22,11 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.04	TST nested machine example - low-level machine assembling events
 		for high-level one
 0.04	TST inherited machine example
-0.04	REF Use XS when available
-0.05	API Allow sm_state w/o handler sub
+0.05	API send_event() via queue for reenterability
+			if (Q) { push Q } else { local Q = []; while (shift Q) handle; }
+			(but what with return values?)
+0.05	API return value callback
+0.05	API sm_transition locking (like states) & uniqueness check
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?
