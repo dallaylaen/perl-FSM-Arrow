@@ -22,14 +22,14 @@ my @types;
 	use FSM::Arrow qw(:class);
 
 	sm_state one => sub {};
-	sub descr { "Does nothing at all" };
+	sub descr { "1 empty state" };
 	push @types, __PACKAGE__;
 
 	package empty_final;
 	use FSM::Arrow qw(:class);
 
 	sm_state one => sub {}, final => 1;
-	sub descr { "Does nothing at all, marked final" };
+	sub descr { "1 empty final state" };
 	push @types, __PACKAGE__;
 
 	package flip;
@@ -52,9 +52,10 @@ if ($has_xs) {
 	package flip_xs;
 	use FSM::Arrow qw(:class);
 
-	use Class::XSAccessor
+	Class::XSAccessor->import (
 		accessors => { state => "state" },
-		getters => { schema => "schema" };
+		getters => { schema => "schema" }
+	);
 	sm_state flip => sub { "flop" };
 	sm_state flop => sub { "flip" };
 	sub descr { "2 alterating states, xs SM accessors" };
@@ -79,9 +80,10 @@ if ($has_xs) {
 if ($has_xs) {
 	package typed_xs;
 	use FSM::Arrow qw(:class);
-	use Class::XSAccessor
+	Class::XSAccessor->import(
 		accessors => { state => "state" },
-		getters => { schema => "schema" };
+		getters => { schema => "schema" }
+	);
 
 	sm_state flip => sub {};
 	sm_transition "x" => 'flop';
@@ -103,6 +105,35 @@ if ($has_xs) {
 	use FSM::Arrow qw(:class);
 	use FSM::Arrow::Util qw(event_maker_regex);
 	sm_init on_check_event => event_maker_regex( regex => "(.)" );
+
+	sm_state flip => sub {};
+	sm_transition x => "flop";
+
+	sm_state flop => sub {};
+	sm_transition x => "flip";
+
+	push @types, __PACKAGE__;
+};
+
+if ($has_xs) {
+	package typed_make_ev_xs::event;
+	our @ISA = qw(FSM::Arrow::Event);
+	Class::XSAccessor->import(
+		constructor => "new",
+		getters => { type => "type", raw => "raw" },
+	);
+
+	package typed_make_ev_xs;
+	sub descr { "Makes event via callback, all XS" };
+
+	Class::XSAccessor->import(
+		getters => { schema => "schema" },
+		accessors => { state => "state" },
+	);
+	use FSM::Arrow qw(:class);
+	use FSM::Arrow::Util qw(event_maker_regex);
+	sm_init on_check_event => event_maker_regex(
+		class => "typed_make_ev_xs::event", regex => "(.)" );
 
 	sm_state flip => sub {};
 	sm_transition x => "flop";
