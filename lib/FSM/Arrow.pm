@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0506;
+our $VERSION = 0.0507;
 
 =head1 DESCRIPTION
 
@@ -228,6 +228,11 @@ state machine instance and incoming event.
 HANDLER MUST return next state name followed by an arbitrary return value,
 both of which MAY be omitted.
 
+HANDLER MAY be omitted, in this case it is replaced with
+a diagnostic sub that dies whenever called
+to indicate that unexpected event got through to this state.
+Use C<sub{}> to silently ignore ALL incoming events.
+
 Next state MUST be either a false value, which means no change,
 or a valid state name added via sm_state as well.
 
@@ -300,15 +305,16 @@ See also add_state() below.
 
 =cut
 
-sub sm_state ($$@) { ## no critic
+sub sm_state ($@) { ## no critic
+	my $name = shift;
+	my $handler = _is_sub($_[0]) ? shift : undef;
 	croak "sm_state: FATAL: Odd number of arguments"
 		if @_%2;
-	my ($name, $handler, @options) = @_;
 
 	my $caller = caller;
 
 	my $schema = __PACKAGE__->_sm_init_schema($caller);
-	$schema->add_state( $name => $handler, @options );
+	$schema->add_state( $name => $handler, @_ );
 };
 
 =head3 sm_transition 'event_type' => 'new_state', %options;
@@ -551,10 +557,14 @@ sub _deep_copy {
 
 Define a new state.
 
-'name' MUST be a unique true string, HANDLER MUST be a subroutine.
+'name' MUST be a unique true string, HANDLER MUST be a subroutine if defined.
 
-CODE MUST return next state name followed by an arbitrary return value, both
-of which may be omitted.
+HANDLER MUST return next state name followed by an arbitrary return value,
+both of which may be omitted.
+
+If HANDLER is undef, it is replaced with a sub that dies whenever called
+to indicate that unexpected event got through to this state.
+Use C<sub{}> to silently ignore all incoming events.
 
 See C<sm_state> above for detailed description of name, HANDLER,
 and available options.
@@ -577,7 +587,7 @@ sub add_state {
 		unless $name and !ref $name;
 	# TODO code should allow string 'FINAL' for final states
 	croak __PACKAGE__."->add_state: handler must be a subroutine"
-		unless $code and _is_sub($code);
+		unless _is_sub($code);
 	croak __PACKAGE__."->add_state: state $name already defined"
 		if $self->{state_lock}{ $name } and !$args{override};
 	_is_sub( $args{$_} )
@@ -594,6 +604,13 @@ sub add_state {
 		croak __PACKAGE__
 			."->add_state: argument(s) @extra forbidden in a final state"
 				if @extra;
+	};
+
+	# No code was given => ANY event unexpected and unwanted
+	$code ||= sub {
+		my $explain = (blessed $_ and $_->isa('FSM::Arrow::Event'))
+			? (" of type='".$_->type."'") : ('');
+		$self->_croak( "Unexpected event$explain received in state '$name'" );
 	};
 
 	# now update self

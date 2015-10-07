@@ -6,9 +6,6 @@ WISHLIST (past version, change that was suggested during that version)
 0.03	TST Add improved PSGI example to show inheritance power.
 0.04	TST Expect example (run external program, control execution flow,
 		enter passwd)
-0.04	REF Use XS when available
-0.05	API Allow sm_state w/o handler sub
-0.05	API FSM::Arrow::Util - handler & cb generator
 
 FAR WISHLIST (past version, change that was suggested during that version)
 0.02	TST anyevent example

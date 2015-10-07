@@ -47,3 +47,4 @@ t/99-examples-live.t
 example/transition.pl
 lib/FSM/Arrow/Util.pm
 t/25-util-make-handler.t
+t/26-decl-nohandler.t
