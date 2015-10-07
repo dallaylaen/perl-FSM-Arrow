@@ -71,7 +71,7 @@ if ($has_xs) {
 	sm_state flop => sub {};
 	sm_transition "x" => 'flip';
 
-	sub descr { "2 alterating states, hard transactions used" };
+	sub descr { "2 alterating states, hard transitions used" };
 	sub get_event {
 		FSM::Arrow::Event->new( type => "x" );
 	};
@@ -91,7 +91,7 @@ if ($has_xs) {
 	sm_state flop => sub {};
 	sm_transition "x" => 'flip';
 
-	sub descr { "2 alterating states, hard transactions used, xs" };
+	sub descr { "2 alterating states, hard transitions used, xs" };
 	sub get_event {
 		FSM::Arrow::Event->new( type => "x" );
 	};
@@ -179,15 +179,28 @@ USAGE
 	exit 1;
 };
 
-my $unit = do {
-	my $t0 = time;
-	my $code = sub {};
-	my $count = 10000;
-	for (my $i=$count; $i-->0; ) {
-		$code->();
+{
+	package My::Bench::Unit;
+	use Time::HiRes qw(time);
+
+	sub test {
+		my $self = shift;
+		return;
 	};
-	(time - $t0) / $count;
+
+	sub get_unit {
+		my $obj = bless {}, shift;
+		my $count = shift;
+
+		my $t0 = time;
+		for (my $i=$count; $i-->0; ) {
+			$obj->test();
+		};
+		return ((time - $t0) / $count);
+	};
 };
+
+my $unit = My::Bench::Unit->get_unit(10000);
 
 while (@ARGV) {
 	my ($type, $count) = shift() =~ /^(\S+)=(\d+)$/
