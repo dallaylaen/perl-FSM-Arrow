@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0505;
+our $VERSION = 0.0506;
 
 =head1 DESCRIPTION
 
@@ -125,6 +125,19 @@ our %EXPORT_TAGS = ( class => [qw[ sm_init sm_state sm_transition ]] );
 our @CARP_NOT = qw(FSM::Arrow::Instance);
 
 use FSM::Arrow::Instance;
+
+# Use XS Accessors if available, for speed & glory!
+# Normal accessors are still present and work the same (but slower).
+my $can_xs = !$ENV{FSM_ARROW_NOXS} && eval { require Class::XSAccessor; 1 };
+if ($can_xs) {
+	Class::XSAccessor->import(
+		replace => 1,
+		getters => {
+			initial_state  => 'initial_state',
+			instance_class => 'instance_class',
+		},
+	);
+};
 
 =head3 sm_init %options
 
@@ -937,6 +950,23 @@ B<NOTE> This is normally NOT called directly.
 sub last_added_state {
 	return $_[0]->{last_added_state};
 };
+
+=head1 ENVIRONMENT VARIABLES
+
+=over
+
+=item * B<FSM_ARROW_NOXS> - by default, L<Class::XSAccessor> is used
+if available for performance reasons.
+This variable suppresses that behavior.
+Can be used for benchmarking, or in case of compatibility issues.
+
+See in C<examples/bench.pl>:
+
+    BEGIN {
+        $ENV{FSM_ARROW_NOXS} = 1;
+    };
+
+=back
 
 =head1 AUTHOR
 

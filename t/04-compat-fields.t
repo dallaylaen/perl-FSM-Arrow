@@ -28,7 +28,7 @@ done_testing;
 BEGIN {
 package My::Machine;
 
-use fields qw(state schema);
+use fields qw(weird_user_data);
 use FSM::Arrow qw(:class);
 
 sub new {

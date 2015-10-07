@@ -11,6 +11,11 @@ use Time::HiRes qw(time);
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
+BEGIN {
+	# forbid XS accessors to keep benchmark objective
+	$ENV{FSM_ARROW_NOXS} = 1;
+};
+
 use FSM::Arrow::Event;
 
 my $has_xs = eval { require Class::XSAccessor; 1; };

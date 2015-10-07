@@ -29,17 +29,32 @@ SUPER::handle_event;
 
 =back
 
+B<NOTE>For performance reasons, L<Class::XSAccessor> is used if available.
+This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
+
 =head1 METHODS
 
 =cut
 
-our $VERSION = 0.0501;
+our $VERSION = 0.0502;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
 use Carp;
-
 our @CARP_NOT = qw(FSM::Arrow);
+
+use fields qw(state schema);
+
+# Use XS Accessors if available, for speed & glory
+# Normal accessors are still present and work the same (but slower).
+my $can_xs = !$ENV{FSM_ARROW_NOXS} && eval { require Class::XSAccessor; 1 };
+if ($can_xs) {
+	Class::XSAccessor->import(
+		replace => 1,
+		getters => { schema => 'schema' },
+		accessors => { state => 'state' },
+	);
+};
 
 =head2 new( %args )
 
@@ -55,8 +70,7 @@ our @CARP_NOT = qw(FSM::Arrow);
 
 =back
 
-This constructor is as simple as possible and can be overridden by
-Moose, Class::XSAccessor, etc. if needed.
+B<NOTE> See EXTENDING section below if you intend to override new().
 
 =cut
 
@@ -96,7 +110,8 @@ Without arguments, returns current state.
 With one argument, sets new state. Returns self (this is not required
 by CONTRACT though).
 
-B<NOTE> This is normally NOT called directly.
+B<NOTE> This should normally NOT be called directly,
+as state change callbacks and limitations will be ignored.
 
 =cut
 
@@ -161,7 +176,7 @@ If you use Moose:
 If you use fields:
 
     package My::SM;
-    use fields qw(schema state); # and probably more fields there
+    use fields qw(...); # Whatever fields you need
     use FSM::Arrow qw(:class);
     # ... lots of definitions
     sub new {

@@ -23,12 +23,26 @@ and any arbitrary data which is at user's discretion.
 
 See also L<FSM::Arrow::Util> for event generator functions.
 
+B<NOTE>For performance reasons, L<Class::XSAccessor> is used if available.
+This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
+
 =cut
+
+our $VERSION = 0.0503;
 
 use Carp;
 our @CARP_NOT = qw(FSM::Arrow FSM::Arrow::Instance);
 
-our $VERSION = 0.0502;
+# Use XS Accessors if available, for speed & glory
+# Normal accessors are still present and work the same (but slower).
+my $can_xs = !$ENV{FSM_ARROW_NOXS} && eval { require Class::XSAccessor; 1 };
+if ($can_xs) {
+	Class::XSAccessor->import(
+		replace => 1,
+		constructor => 'new',
+		getters => { type => 'type', raw => 'raw', },
+	);
+};
 
 =head1 METHODS
 
