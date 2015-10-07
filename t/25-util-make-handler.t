@@ -25,7 +25,7 @@ is_deeply [ $sub->("bard")    ], [ "bar", "went" ], "State change with return";
 is_deeply [ $sub->("bazooka") ], [ "baz", "ooka" ], "sub substitution";
 
 $handler = handler_regex_chain(
-	default => [ "xxx", sub { /(...)/ and $1 } ],
+	unknown => [ "xxx", sub { /(...)/ and $1 } ],
 	undef   => "stop",
 );
 

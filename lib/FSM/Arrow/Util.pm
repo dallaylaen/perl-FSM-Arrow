@@ -26,7 +26,7 @@ our @CARP_NOT = qw(FSM::Arrow FSM::Arrow::Instance);
 
 use FSM::Arrow::Event;
 
-our $VERSION = 0.05;
+our $VERSION = 0.0501;
 
 =head1 SUBROUTINES
 
@@ -55,7 +55,7 @@ sub handler_regex_chain {
 			push @$rules, [ $condition, $action ]; # rex, next, retval
 		} elsif ($condition eq 'undef') {
 			$undef = $action;
-		} elsif ($condition eq 'default') {
+		} elsif ($condition eq 'unknown') {
 			$default = $action;
 		} else {
 			croak "handler_chained_regex: FATAL: Unexpected condition $condition";
@@ -122,7 +122,7 @@ sub event_maker_regex {
 	$re = qr($re) unless ref $re eq 'Regexp';
 
 	my $class   = defined $args{class}   ? $args{class}   : "FSM::Arrow::Event";
-	my $stop    = defined $args{stop}    ? $args{stop}    : "__STOP__";
+	my $stop    = defined $args{undef}   ? $args{undef}   : "__STOP__";
 	my $unknown = defined $args{unknown} ? $args{unknown} : "__ANY__";
 
 	$class->isa("FSM::Arrow::Event")
