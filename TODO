@@ -26,6 +26,8 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.05	API return value callback
 0.05	API sm_transition locking (like states) & uniqueness check
 0.05	API restrict sm_* to only known parameter values.
+0.05	API FSM::Arrow::Builder - construct machine state-by-state.
+0.05	API validate() - check that states are consistent.
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?

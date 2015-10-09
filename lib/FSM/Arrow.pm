@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0507;
+our $VERSION = 0.0508;
 
 =head1 DESCRIPTION
 
@@ -340,7 +340,7 @@ Options may include:
 
 =item * handler => CODEREF($instance, $old_state, $new_state, $event)
 
-Will be executed if present to determine what handler_event() should return.
+Will be executed if present to determine what handle_event() should return.
 If it dies, no transition happens.
 Signature is the same as that of on_enter, on_leave etc.
 
@@ -491,6 +491,10 @@ See C<sm_init> above for the rest of possible options.
 
 =cut
 
+my %new_args;
+$new_args{$_}++ for qw( id instance_class initial_state strict
+	on_state_change on_check_event );
+
 sub new {
 	my ($class, %args) = @_;
 
@@ -502,16 +506,17 @@ sub new {
 		return $parent->clone( %args );
 	};
 
+	my @extra = grep { !$new_args{ $_ } } keys %args;
+	croak __PACKAGE__."->new: unexpected arguments @extra"
+		if @extra;
+
 	$args{instance_class} ||= 'FSM::Arrow::Instance';
 
-	my $self = bless {
-		instance_class   => $args{instance_class},
-		initial_state    => $args{initial_state},
-		on_state_change  => $args{on_state_change},
-		on_check_event   => $args{on_check_event},
-		id               => $args{id},
-	}, $class;
+	my $self = bless {}, $class;
+	defined $args{$_} and $self->{$_} = $args{$_}
+		for keys %new_args;
 
+	# Must do this AFTER self is defined
 	$self->{id} ||= $self->generate_id;
 	return $self;
 };
@@ -536,6 +541,7 @@ sub clone {
 		instance_class   => $self->instance_class,
 		initial_state    => $self->initial_state,
 		on_state_change  => $self->{on_state_change},
+		strict           => $self->{strict},
 		%args,
 	);
 
@@ -577,23 +583,29 @@ in a clone of another machine.
 
 =cut
 
+my %state_args;
+$state_args{$_}++ for qw( initial final accepting next
+	on_enter on_leave override );
+
 sub add_state {
-	croak __PACKAGE__."->add_state: odd number of arguments"
+	$_[0]->_croak( "add_state: odd number of arguments" )
 		unless @_%2;
 	my ($self, $name, $code, %args) = @_;
 
 	# check input thoroughly
-	croak __PACKAGE__."->add_state: state name must be true string"
+	my @extra = grep { ! $state_args{$_} } keys %args;
+	$self->_croak( "add_state: unexpected arguments @extra" )
+		if @extra;
+	$self->_croak( "add_state: state name must be true string" )
 		unless $name and !ref $name;
-	# TODO code should allow string 'FINAL' for final states
-	croak __PACKAGE__."->add_state: handler must be a subroutine"
+	$self->_croak( "add_state: handler must be a subroutine" )
 		unless _is_sub($code);
-	croak __PACKAGE__."->add_state: state $name already defined"
+	$self->_croak( "add_state: state $name already defined" )
 		if $self->{state_lock}{ $name } and !$args{override};
 	_is_sub( $args{$_} )
-		or croak __PACKAGE__."->add_state: $_ callback must be a subroutine"
+		or $self->_croak( "add_state: $_ callback must be a subroutine" )
 		for qw(on_enter on_leave);
-	croak __PACKAGE__."->add_state: next must be array of true strings"
+	$self->_croak( "add_state: next must be array of true strings" )
 		if( $args{next}
 			&& ( ref $args{next} ne 'ARRAY'
 			|| grep { !$_ || ref $_ } @{ $args{next} }));
@@ -601,9 +613,11 @@ sub add_state {
 	# final state has some restrictions...
 	if ($args{final}) {
 		my @extra = grep { defined $args{$_} } qw(on_leave next);
-		croak __PACKAGE__
-			."->add_state: argument(s) @extra forbidden in a final state"
+		$self->_croak( "add_state: options '@extra' forbidden in a final state" )
 				if @extra;
+	};
+	if ($self->{strict}) {
+		$args{next} ||= [] unless $args{final};
 	};
 
 	# No code was given => ANY event unexpected and unwanted
@@ -658,9 +672,15 @@ See C<sm_transition> above for detailed discussion of %options.
 
 =cut
 
+my %trans_args;
+$trans_args{$_}++ for qw( event handler on_follow );
+
 sub add_transition {
 	my ($self, $from, $to, %args) = @_;
 
+	my @extra = grep { !$trans_args{$_} } keys %args;
+	$self->_croak( "add_transition: unexpected arguments @extra" )
+		if @extra;
 	$self->_croak( "add_transition: old_state must be a true string" )
 		unless $from and !ref $from;
 	$self->_croak( "add_transition: new_state must be a true string" )
@@ -771,11 +791,13 @@ sub handle_event {
 
 		# execute callbacks: leave, enter, generic callback
 		my $cblist = $rules->{cache_cb}{$new_state} ||= [
-			grep { defined $_ }
-            $rules->{on_leave},
-            $rules->{on_follow}{$new_state},
-            $self->{states}{$new_state}{on_enter},
-            $self->{on_state_change},
+			# HACK grep defined creates unwanted hash keys, add @list to avoid
+			grep { defined $_ } my @list_context = (
+				$rules->{on_leave},
+				$rules->{on_follow}{$new_state},
+				$self->{states}{$new_state}{on_enter},
+				$self->{on_state_change},
+			)
 		];
 		foreach my $callback ( @$cblist ) {
 			$callback and $callback->( $instance, $old_state, $new_state, $_ );
@@ -792,7 +814,7 @@ sub _croak {
 	croak $_[0]->id.": $_[1]";
 };
 
-=head2 DEBUGGING/INSPECTION PRIMITIVES
+=head2 INSPECTION PRIMITIVES
 
 =head3 list_states
 
