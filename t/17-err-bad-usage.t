@@ -32,4 +32,25 @@ like $@, qr/FSM::Arrow.*constructor.*decl/,
 ok (!@warn, "No warnings emitted");
 diag "WARNING: $_" for @warn;
 
+{
+	package My::BadSM;
+	use FSM::Arrow qw(:class);
+	use Test::More;
+
+	eval {
+		sm_init foo => 1;
+	};
+	like $@, qr(unexpected), "new: unexpected param = no go";
+	eval {
+		sm_state start => sub {}, foo => 1;
+	};
+	like $@, qr(unexpected), "add_state: unexpected param = no go";
+
+	sm_state real_start => sub {};
+	eval {
+		sm_transition [] => 'finish', foo => 1;
+	};
+	like $@, qr(unexpected), "add_transition: unexpected param = no go";
+};
+
 done_testing;
