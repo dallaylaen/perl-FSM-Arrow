@@ -15,6 +15,8 @@ This package contains subroutine generators for some of such cases.
 
 =cut
 
+our $VERSION = 0.0502;
+
 use Exporter;
 
 our @ISA = qw(Exporter);
@@ -25,8 +27,6 @@ use Carp;
 our @CARP_NOT = qw(FSM::Arrow FSM::Arrow::Instance);
 
 use FSM::Arrow::Event;
-
-our $VERSION = 0.0501;
 
 =head1 SUBROUTINES
 
@@ -105,8 +105,12 @@ First capture group would become type if no type group is defined.
 =item * 'undef' - event type that is returned for undefined string.
 Default is C<__STOP__>.
 
-=item * unknown - event type that is returned for no type.
+=item * unknown - event type that is returned if regex matched,
+but type is empty.
 Default is C<__ANY__>.
+
+=item * nomatch - event type that is returned if regex didn't match.
+If unspecified, the returned sub will die at this point.
 
 =back
 
@@ -124,6 +128,7 @@ sub event_maker_regex {
 	my $class   = defined $args{class}   ? $args{class}   : "FSM::Arrow::Event";
 	my $stop    = defined $args{undef}   ? $args{undef}   : "__STOP__";
 	my $unknown = defined $args{unknown} ? $args{unknown} : "__ANY__";
+	my $nomatch = $args{nomatch};
 
 	$class->isa("FSM::Arrow::Event")
 		or croak "event_maker_regex: FATAL: "
@@ -133,14 +138,18 @@ sub event_maker_regex {
 		return $class->new(type => $stop, raw => undef)
 			unless defined $_[0];
 
-		$_[0] =~ $re or croak "Raw event doesn't match regex $re";
+		if ($_[0] =~ $re) {
+			no warnings 'uninitialized'; ## no critic
+			return $class->new (
+				raw => $_[0],
+				type => length $1 ? $1 : $unknown,
+				%+,
+			);
+		};
 
-		no warnings 'uninitialized'; ## no critic
-		return $class->new (
-			raw => $_[0],
-			type => length $1 ? $1 : $unknown,
-			%+,
-		);
+		return $class->new( raw => $_[0], type => $nomatch )
+			if defined $nomatch;
+		croak "Raw event doesn't match regex $re";
 	};
 };
 
