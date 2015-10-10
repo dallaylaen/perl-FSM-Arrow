@@ -49,3 +49,4 @@ lib/FSM/Arrow/Util.pm
 t/25-util-make-handler.t
 t/26-decl-nohandler.t
 t/27-decl-strict.t
+t/28-oop-validate.t

@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0508;
+our $VERSION = 0.0509;
 
 =head1 DESCRIPTION
 
@@ -814,7 +814,7 @@ sub _croak {
 	croak $_[0]->id.": $_[1]";
 };
 
-=head2 INSPECTION PRIMITIVES
+=head2 DEVELOPMENT/INSPECTION PRIMITIVES
 
 =head3 list_states
 
@@ -853,6 +853,47 @@ sub get_state {
 	$data->{$_} ||= undef for qw(on_enter on_leave);
 	delete $data->{cache_cb};
 	return $data;
+};
+
+=head3 validate()
+
+B<EXPERIMENTAL>
+
+Checks machine for correctness.
+Returns 0 if no violations vere found, true otherwise.
+Return format may change.
+
+Criteria include:
+
+=over
+
+=item * all possible transitions lead to existing states.
+
+=item * if machine is strict, final states are marked as such.
+
+=back
+
+=cut
+
+sub validate {
+	my $self = shift;
+
+	my %seen;
+	$seen{$_}++ for $self->list_states;
+
+	my @violations;
+	foreach my $state (keys %seen) {
+		my $rules = $self->get_state( $state );
+		my @away = grep { !$seen{$_} } @{ $rules->{next} };
+		push @violations, "extra transitions: $state=>[@away]"
+			if @away;
+
+		if ($self->{strict}) {
+			push @violations, "final state $state not marked as such"
+				if !@{ $rules->{next} } and !$rules->{final};
+		};
+	};
+	return @violations ? \@violations : 0;
 };
 
 =head3 pretty_print
