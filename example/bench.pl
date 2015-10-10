@@ -109,7 +109,7 @@ if ($has_xs) {
 
 	use FSM::Arrow qw(:class);
 	use FSM::Arrow::Util qw(event_maker_regex);
-	sm_init on_check_event => event_maker_regex( regex => "(.)" );
+	sm_init on_event => event_maker_regex( regex => "(.)" );
 
 	sm_state flip => sub {};
 	sm_transition x => "flop";
@@ -137,7 +137,7 @@ if ($has_xs) {
 	);
 	use FSM::Arrow qw(:class);
 	use FSM::Arrow::Util qw(event_maker_regex);
-	sm_init on_check_event => event_maker_regex(
+	sm_init on_event => event_maker_regex(
 		class => "typed_make_ev_xs::event", regex => "(.)" );
 
 	sm_state flip => sub {};

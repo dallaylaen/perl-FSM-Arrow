@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0509;
+our $VERSION = 0.0510;
 
 =head1 DESCRIPTION
 
@@ -493,15 +493,15 @@ See C<sm_init> above for the rest of possible options.
 
 my %new_args;
 $new_args{$_}++ for qw( id instance_class initial_state strict
-	on_state_change on_check_event );
+	on_state_change on_event );
 
 sub new {
 	my ($class, %args) = @_;
 
 	croak __PACKAGE__."->new: on_state_change must be a subroutine"
 		unless _is_sub($args{on_state_change});
-	croak __PACKAGE__."->new: on_check_event must be a subroutine"
-		unless _is_sub($args{on_check_event});
+	croak __PACKAGE__."->new: on_event must be a subroutine"
+		unless _is_sub($args{on_event});
 	if (my $parent = delete $args{parent}) {
 		return $parent->clone( %args );
 	};
@@ -759,8 +759,8 @@ sub handle_event {
 	(my ($self, $instance), local $_) = @_;
 
 	# Coerce event, if needed...
-	$_ = $self->{on_check_event}->($_)
-		if $self->{on_check_event};
+	$_ = $self->{on_event}->($_)
+		if $self->{on_event};
 
 	my $old_state = $instance->state;
 	my ($new_state, $ret);

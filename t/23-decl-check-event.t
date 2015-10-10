@@ -11,7 +11,7 @@ use Test::More;
 	use FSM::Arrow qw(:class);
 	use FSM::Arrow::Event;
 
-	sm_init on_check_event => sub {
+	sm_init on_event => sub {
 		return FSM::Arrow::Event -> new (type => shift);
 	}, on_state_change => sub {
 		blessed $_ and $_->isa("FSM::Arrow::Event")
