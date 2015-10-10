@@ -1,6 +1,17 @@
 Revision history for FSM-Arrow
 
-0.04	Sun Sep 27 2015
+0.06	Sat Oct 10 2015
+        DEV Add validate() method for checking machine correctness
+        API Add strict flag to sm_init (enforces next state listing);
+		API croak on unexpected sm_init/sm_state/sm_transition params
+        API Allow omitting HANDLER in event def, croak is used as default
+        API Add FSM::Arrow::Util module for event & handler generation
+        API Change contract. schema() and state() become dumb accessors;
+            new() is responsible for default values.
+        API Add on_check_event callback to coerce incoming events
+        REF Use Class::XSAccessor if available, $ENV{FSM_ARROW_NOXS} to suppress
+
+0.05	Sun Sep 27 2015
         API Add typed events (FSM::Arrow::Event),
             add typed transitions (sm_transition ev_name => next_state)
         API Add 'accepting' parameter to sm_state

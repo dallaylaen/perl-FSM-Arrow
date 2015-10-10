@@ -15,7 +15,7 @@ This package contains subroutine generators for some of such cases.
 
 =cut
 
-our $VERSION = 0.0502;
+our $VERSION = 0.06;
 
 use Exporter;
 

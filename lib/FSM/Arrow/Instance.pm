@@ -36,7 +36,7 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 
 =cut
 
-our $VERSION = 0.0502;
+our $VERSION = 0.06;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.

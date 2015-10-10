@@ -28,7 +28,7 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 
 =cut
 
-our $VERSION = 0.0503;
+our $VERSION = 0.06;
 
 use Carp;
 our @CARP_NOT = qw(FSM::Arrow FSM::Arrow::Instance);
