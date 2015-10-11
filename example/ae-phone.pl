@@ -38,6 +38,9 @@ use lib "$Bin/../lib";
 		return join " ", $self->type, $self->number // ()
 			, $self->is_mt ? "[mt]" : "[mo]";
 	};
+	sub peer {
+		return My::SM::Handset->get_user( $_[0]->number );
+	};
 
 	package My::SM::Handset;
 	use FSM::Arrow qw(:class);
@@ -57,20 +60,35 @@ use lib "$Bin/../lib";
 			undef => 'part',
 		),
 		on_state_change => sub {
-			warn "    SM ". $_[0]->number. " $_[1] => $_[2] via '$_'\n";
+			warn "    SM ". ($_[0]->number // '[offline]')
+				. " $_[1] => $_[2] via '$_'; q=[@{$_[0]->sm_queue}]\n";
 		};
 	# events so far: join <number>, part;
 
-	sm_state 'offline';
+	sm_state 'offline', on_enter => sub {
+		my $self = shift;
+		$self->sign_off;
+		if (my $call = $self->call) {
+			$call->handle_event( $self->mk_event("bye") );
+		};
+		$self->call( undef );
+	};
 	sm_transition join => 'online', handler => sub {
 		my $self = shift;
 		die "join requires number" unless $_->number;
 
-		$self->register($_->number);
+		$self->sign_on($_->number);
 		"Joined as ".$self->number;
 	};
+	sm_transition bye => 'offline';
 
-	sm_state 'online';
+	sm_state 'online', on_enter => sub {
+		my $self = shift;
+		if (my $call = $self->call) {
+			$call->handle_event( $self->mk_event("bye") );
+		};
+		$self->call( undef );
+	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
 	sm_transition dial => 'calling', handler => sub {
 		my $self = shift;
@@ -82,18 +100,54 @@ use lib "$Bin/../lib";
 
 		# TODO here will be new SM!
 		$self->call( $peer );
+		$self->call->handle_event( $self->mk_event("ring") );
 		"Calling ".$peer->number;
 	};
+	sm_transition ring => 'ringing', handler => sub {
+		"Incoming call from ".$_->number.", accept?(y/n)" };
+	sm_transition bye => 'online';
 
 	sm_state 'calling';
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
+	sm_transition y    => 'busy',    handler => sub { "Talking..." };
+	sm_transition bye  => 'online',  handler => sub { "Call rejected" };
+	sm_transition ring => 'calling', handler => sub {
+		my $self = shift;
+		my $peer = $self->get_user( $_->number );
+		$peer and $peer->handle_event( $self->mk_event( "bye" ) );
+	};
+
+	sm_state 'ringing';
+	sm_transition part => 'offline', handler => sub { "Gone offline" };
+	sm_transition n    => 'online',  handler => sub {
+		my $self = shift;
+		my $peer = $self->get_user( $_->number );
+		$peer and $peer->handle_event( $self->mk_event( "bye" ) );
+		"Hangup";
+	};
+	sm_transition y    => 'busy',    handler => sub {
+		my $self = shift;
+		my $peer = $self->get_user( $_->number );
+		$peer and $peer->handle_event( $self->mk_event( "y" ) );
+		"Hangup";
+	};
+
+	sm_state 'busy';
+	sm_transition part => 'offline', handler => sub { "Gone offline" };
+	sm_transition bye  => 'online',  handler => sub { "Hangup" };
 
 	# Self check state definitions
 	my $bad = __PACKAGE__->new->schema->validate();
 	die "VIOLATIONS" . Data::Dumper::Dumper($bad) if $bad;
 
+	sub mk_event {
+		my ($self, $type) = @_;
+		return My::Event->new(
+			type => $type, number => $self->number, is_mt => 1 );
+	};
+
 	our %users;
-	sub register {
+	sub sign_on {
 		my ($self, $number) = @_;
 		die "Number $number already in use"
 			if $users{$number};
@@ -102,7 +156,7 @@ use lib "$Bin/../lib";
 		$users{$number} = $self;
 		return $self;
 	};
-	sub part {
+	sub sign_off {
 		my $self = shift;
 		my $number = delete $self->{number};
 		delete $users{$number} if $number;
@@ -110,7 +164,7 @@ use lib "$Bin/../lib";
 	};
 	sub get_user {
 		my ($class, $number) = @_;
-		return $users{$number};
+		return $users{$number || ''};
 	};
 
 	package My::SM::Call;
