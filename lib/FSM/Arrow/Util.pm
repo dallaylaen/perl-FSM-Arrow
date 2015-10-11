@@ -15,7 +15,7 @@ This package contains subroutine generators for some of such cases.
 
 =cut
 
-our $VERSION = 0.06;
+our $VERSION = 0.0601;
 
 use Exporter;
 
@@ -90,6 +90,7 @@ sub handler_regex_chain {
 
 Static method, returns a coderef that constructs
 FSM::Arrow::Event from given string.
+Refs are let through untouched.
 
 %args may include:
 
@@ -137,6 +138,7 @@ sub event_maker_regex {
 	return sub {
 		return $class->new(type => $stop, raw => undef)
 			unless defined $_[0];
+		return $_[0] if ref $_[0];
 
 		if ($_[0] =~ $re) {
 			no warnings 'uninitialized'; ## no critic

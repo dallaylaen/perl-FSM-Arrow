@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.06;
+our $VERSION = 0.0601;
 
 =head1 DESCRIPTION
 
@@ -169,7 +169,7 @@ May be useful for debugging, logging etc.
 
 B<NOTE> Exception in this callback would cancel the transition.
 
-=item * on_event_check => CODE($event)
+=item * on_event => CODE($event)
 
 If set, incoming event will be replaced by whatever is returned by CODE
 before proceeding to event handler.
