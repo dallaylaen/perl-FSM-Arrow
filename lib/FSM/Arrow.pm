@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0603;
+our $VERSION = 0.0604;
 
 =head1 DESCRIPTION
 
@@ -845,12 +845,15 @@ sub handle_event {
 			$on_return and $on_return->($instance, $ret);
 		}; # while
 	}; # eval
-	my $queue = $instance->sm_queue;
-	$instance->sm_queue( undef );
+
 	if ($@) {
+		# get queue before unsetting...
+		my $queue = $instance->sm_queue;
+		$instance->sm_queue( undef );
 		$self->{on_error} and $self->{on_error}->( $instance, $@, $queue );
 		die $@;
 	};
+	$instance->sm_queue( undef );
 
 	return $ret;
 };
