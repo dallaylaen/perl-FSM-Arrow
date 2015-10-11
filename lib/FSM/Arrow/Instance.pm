@@ -36,14 +36,14 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 
 =cut
 
-our $VERSION = 0.06;
+our $VERSION = 0.0601;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
 use Carp;
 our @CARP_NOT = qw(FSM::Arrow);
 
-use fields qw(state schema);
+use fields qw(state schema sm_queue);
 
 # Use XS Accessors if available, for speed & glory
 # Normal accessors are still present and work the same (but slower).
@@ -52,7 +52,7 @@ if ($can_xs) {
 	Class::XSAccessor->import(
 		replace => 1,
 		getters => { schema => 'schema' },
-		accessors => { state => 'state' },
+		accessors => { state => 'state', sm_queue => 'sm_queue' },
 	);
 };
 
@@ -85,7 +85,7 @@ sub new {
 	return bless \%args, $class;
 };
 
-=head2 handle_event( $event )
+=head2 handle_event( $event, ... )
 
 Process incoming event via handler correspondent to the current state.
 
@@ -122,6 +122,23 @@ sub state {
 
 	return $self->{state} unless @_;
 	$self->{state} = shift;
+	return $self;
+};
+
+=head2 sm_queue( [] )
+
+Get/set event queue array.
+Per-instance event queues are needed for reenterable event handling.
+
+B<NOTE> This should NEVER be called directly.
+
+=cut
+
+sub sm_queue {
+	my $self = shift;
+
+	return $self->{sm_queue} unless @_;
+	$self->{sm_queue} = shift;
 	return $self;
 };
 

@@ -51,3 +51,4 @@ t/26-decl-nohandler.t
 t/27-decl-strict.t
 t/28-oop-validate.t
 example/ae-phone.pl
+t/29-decl-reentrable.t

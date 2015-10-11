@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0601;
+our $VERSION = 0.0602;
 
 =head1 DESCRIPTION
 
@@ -752,60 +752,73 @@ This is normally called as $instance->handle_event( $event ) and not directly.
 =cut
 
 sub handle_event {
-	# The same in NORMAL notation:
-	# my ($self, $instance, $event) = @_;
-	# local $_ = $event;
-	# Premature optimization, thats it...
-	(my ($self, $instance), local $_) = @_;
+	my $self = shift;
+	my $instance = shift;
 
-	# Coerce event, if needed...
-	$_ = $self->{on_event}->($_)
-		if $self->{on_event};
-
-	my $old_state = $instance->state;
-	my ($new_state, $ret);
-	my $rules = $self->{states}{$old_state};
-
-	my $ev_type = blessed $_ && $_->isa("FSM::Arrow::Event") && $_->type;
-
-	# Determine next state:
-	if ( defined $ev_type
-		and $new_state = $rules->{event_types}{ $ev_type }
-	) {
-		# if typed event is used, try hard transition (type-based)
-		my $handler = $rules->{event_handler}{ $ev_type };
-		$handler and $ret = $handler->( $instance, $old_state, $new_state, $_ );
-	} else {
-		# otherwise, try soft transition (method-like)
-		my $handler = $rules->{handler};
-		($new_state, $ret) = $handler->( $instance, $_ );
+	if ( my $queue = $instance->sm_queue ) {
+		push @$queue, @_;
+		return;
 	};
 
-	# If state changed
-	if ($new_state and !$rules->{final}) {
-		# check transition legality
-		$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
-			unless exists $self->{states}{ $new_state };
-		$self->_croak("Illegal transition '$old_state'->'$new_state'(forbidden)")
-			if $rules->{next} and !$rules->{next}{ $new_state };
+	$instance->sm_queue( \@_ );
+	my $ret;
+	# we need to restore queue on failure, so eval the whole thing...
+	eval {
+		while (@_) {
+			local $_ = shift;
+			# Coerce event, if needed...
+			$_ = $self->{on_event}->($_)
+				if $self->{on_event};
 
-		# execute callbacks: leave, enter, generic callback
-		my $cblist = $rules->{cache_cb}{$new_state} ||= [
-			# HACK grep defined creates unwanted hash keys, add @list to avoid
-			grep { defined $_ } my @list_context = (
-				$rules->{on_leave},
-				$rules->{on_follow}{$new_state},
-				$self->{states}{$new_state}{on_enter},
-				$self->{on_state_change},
-			)
-		];
-		foreach my $callback ( @$cblist ) {
-			$callback and $callback->( $instance, $old_state, $new_state, $_ );
-		};
+			my $old_state = $instance->state;
+			my $new_state;
+			my $rules = $self->{states}{$old_state};
 
-		# finally, set state
-		$instance->state( $new_state );
-	};
+			my $ev_type = blessed $_ && $_->isa("FSM::Arrow::Event") && $_->type;
+
+			# Determine next state:
+			if ( defined $ev_type
+				and $new_state = $rules->{event_types}{ $ev_type }
+			) {
+				# if typed event is used, try hard transition (type-based)
+				my $handler = $rules->{event_handler}{ $ev_type };
+				$handler and $ret = $handler->( $instance, $old_state, $new_state, $_ );
+			} else {
+				# otherwise, try soft transition (method-like)
+				my $handler = $rules->{handler};
+				($new_state, $ret) = $handler->( $instance, $_ );
+			};
+
+			# If state changed
+			if ($new_state and !$rules->{final}) {
+				# check transition legality
+				$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
+					unless exists $self->{states}{ $new_state };
+				$self->_croak("Illegal transition '$old_state'->'$new_state'(forbidden)")
+					if $rules->{next} and !$rules->{next}{ $new_state };
+
+				# execute callbacks: leave, enter, generic callback
+				my $cblist = $rules->{cache_cb}{$new_state} ||= [
+					# HACK grep defined creates unwanted hash keys, add @list to avoid
+					grep { defined $_ } my @list_context = (
+						$rules->{on_leave},
+						$rules->{on_follow}{$new_state},
+						$self->{states}{$new_state}{on_enter},
+						$self->{on_state_change},
+					)
+				];
+				foreach my $callback ( @$cblist ) {
+					$callback and $callback->( $instance, $old_state, $new_state, $_ );
+				};
+
+				# finally, set state
+				$instance->state( $new_state );
+			};
+
+		}; # while
+	}; # eval
+	$instance->sm_queue( undef );
+	die $@ if $@;
 
 	return $ret;
 };
