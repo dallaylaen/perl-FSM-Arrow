@@ -13,7 +13,7 @@ use lib "$Bin/../lib";
 
 BEGIN {
 	# forbid XS accessors to keep benchmark objective
-	$ENV{FSM_ARROW_NOXS} = 1;
+	$ENV{FSM_ARROW_NOXS} = 1 unless defined $ENV{FSM_ARROW_NOXS};
 };
 
 use FSM::Arrow::Event;
