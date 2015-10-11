@@ -20,6 +20,8 @@ use strict;
 use warnings;
 use 5.010; # we'll need named captures - sorry, 5.8...
 use AnyEvent::Strict;
+use AnyEvent::Socket;
+use AnyEvent::Handle;
 use Data::Dumper;
 
 # Always want latest & greatest FSM
@@ -46,22 +48,49 @@ use lib "$Bin/../lib";
 	use FSM::Arrow qw(:class);
 	use FSM::Arrow::Util qw(:all);
 
-	use Class::XSAccessor accessors => { number => 'number', call => 'call' };
+	use Class::XSAccessor accessors => {
+		number => 'number', call => 'call', fh => 'fh' };
 
 	sub new {
 		my $class = shift;
 		return $class->SUPER::new( number => 0, @_);
 	};
 
+	sub on_input {
+		my ($self, @raw) = @_;
+
+		foreach (@raw) {
+			my $ret;
+			next if defined $_ and $_ !~ /\S/;
+			if ( defined $_ and /^\s*check/ ) {
+				$ret = sprintf "num=%s, state=%s"
+					, $self->number || 'offline', $self->state;
+			} else {
+				$ret = eval { $self->handle_event($_) } // '(silent)';
+			};
+			$self->reply( ">> ", "number=", $self->number || 'off'
+				, ", state=", $self->state
+				, ($self->call ? ", call=". $self->call->number : ()));
+		};
+	};
+
 	sm_init strict => 1,
 		on_event => event_maker_regex (
 			class => "My::Event",
-			regex => qr/(?<type>[a-z]\w+)(\s\D*(?<number>\d+))?/,
+			regex => qr/(?<type>[a-z]\w*)(\s\D*(?<number>\d+))?/,
 			undef => 'part',
 		),
 		on_state_change => sub {
 			warn "    SM ". ($_[0]->number // '[offline]')
 				. " $_[1] => $_[2] via '$_'; q=[@{$_[0]->sm_queue}]\n";
+		},
+		on_return => sub {
+			my $self = shift;
+			$self->reply( "OK: ", shift // '(silent)' );
+		},
+		on_error => sub {
+			my $self = shift;
+			$self->reply( "ERROR: ", $@ );
 		};
 	# events so far: join <number>, part;
 
@@ -95,7 +124,7 @@ use lib "$Bin/../lib";
 		die "dial requires number" unless $_->number;
 
 		my $peer = $self->get_user( $_->number );
-		die "Nu such user " . $_->number
+		die "No such user " . $_->number
 			unless $peer;
 
 		# TODO here will be new SM!
@@ -104,12 +133,16 @@ use lib "$Bin/../lib";
 		"Calling ".$peer->number;
 	};
 	sm_transition ring => 'ringing', handler => sub {
-		"Incoming call from ".$_->number.", accept?(y/n)" };
+		my $self = shift;
+		$self->call( $_->peer );
+		"Incoming call from ".$_->number.", accept?(y/n)";
+	};
 	sm_transition bye => 'online';
 
 	sm_state 'calling';
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
-	sm_transition y    => 'busy',    handler => sub { "Talking..." };
+	sm_transition y    => 'busy',    handler => sub {
+		"Talking to ".$_[0]->call->number };
 	sm_transition bye  => 'online',  handler => sub { "Call rejected" };
 	sm_transition ring => 'calling', handler => sub {
 		my $self = shift;
@@ -127,9 +160,8 @@ use lib "$Bin/../lib";
 	};
 	sm_transition y    => 'busy',    handler => sub {
 		my $self = shift;
-		my $peer = $self->get_user( $_->number );
-		$peer and $peer->handle_event( $self->mk_event( "y" ) );
-		"Hangup";
+		$self->call->handle_event( $self->mk_event( "y" ) );
+		"Talking to ".$self->call->number;
 	};
 
 	sm_state 'busy';
@@ -166,27 +198,85 @@ use lib "$Bin/../lib";
 		my ($class, $number) = @_;
 		return $users{$number || ''};
 	};
+	sub get_all {
+		return values %users;
+	};
+
+	# IO primitives
+
+	sub reply {
+		my $self = shift;
+		my $msg = join "", @_;
+		$msg =~ s/\s*$/\n/s;
+
+		if ($self->fh) {
+			$self->fh->push_write($msg);
+		} else {
+			print $msg;
+		};
+	};
 
 	package My::SM::Call;
 	use FSM::Arrow qw(:class);
 };
+# end state machine definitions
 
+my $port = shift;
 
-my $sm = My::SM::Handset->new;
-while (<>) {
-	my $ret = eval { $sm->handle_event($_) } // "(silent)";
-	if (my $err = $@) {
-		print "ERROR: $err\n";
-	} else {
-		print "OK: $ret\n";
+if (!$port) {
+	# offline mode
+	# just check machine lives
+
+	my $sm = My::SM::Handset->new;
+	while (<>) {
+		$sm->on_input($_);
 	};
-};
 
+	exit 0;
+};
 
 # TODO real ae
 # Main loop
 
 # Listen
+
+my $listen = tcp_server undef, $port, sub {
+	my ($fh, $host, $port) = @_;
+
+	my $machine = My::SM::Handset->new;
+	my $handle = AnyEvent::Handle->new(
+		fh => $fh, on_read => sub {
+			my $fh = shift;
+
+			my @ev = @_;
+			while ($fh->{rbuf} =~ s/(.*?)\n//) {
+				my $ev = $1;
+				$ev =~ /\S/ and $machine->on_input($ev);
+			};
+		},
+		on_eof => sub {
+			$machine->on_input(undef);
+			$machine = undef;
+		},
+		on_error => sub {
+			warn "Error in socket: ".shift;
+			$machine->fh( undef );
+			$machine->on_input(undef);
+			$machine = undef;
+		},
+	);
+	$machine->fh( $handle );
+
+	warn "    Peer joined($handle): $host:$port";
+};
+
+my $cv = AnyEvent->condvar;
+$SIG{INT} = sub {
+	warn "Shutting down...";
+	$_->on_input(undef) for My::SM::Handset->get_all;
+	$cv->send;
+};
+$cv->recv;
 
 # Client joined => attach state machine to socket
 # Data comes => parse events
