@@ -5,10 +5,6 @@ WISHLIST (past version, change that was suggested during that version)
 0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
 0.04	TST Expect example (run external program, control execution flow,
 		enter passwd)
-0.05	API send_event() via queue for reenterability
-			if (Q) { push Q } else { local Q = []; while (shift Q) handle; }
-			(but what with return values?)
-0.05	API return value callback
 
 FAR WISHLIST (past version, change that was suggested during that version)
 0.02	TST anyevent example
@@ -27,6 +23,7 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.06	API ret val available in cb (local $FSM::Arrow::ret?)
 0.06	API strict vs inheritance -rule out
 0.06	API sm_transition_from (name?) - add transition to non-current state
+0.06	API stateless events - don't depend on state, don't trigger state change
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?

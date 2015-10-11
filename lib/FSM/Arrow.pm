@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0602;
+our $VERSION = 0.0603;
 
 =head1 DESCRIPTION
 
@@ -159,6 +159,14 @@ B<NOTE> Parent class MUST also be set up using FSM::Arrow declarative interface.
 
 B<NOTE> Only one parent may be supplied.
 
+=item * on_event => CODE($event)
+
+If set, incoming event will be replaced by whatever is returned by CODE
+before proceeding to event handler.
+
+This may be useful if you want to receive some raw data and change it to
+L<FSM::Arrow::Event>. See also EVENT GENERATORS in L<FSM::Arrow::Util>.
+
 =item * on_state_change => CODE($instance, $old, $new, $event)
 
 Callback that is called upon EVERY state transition.
@@ -167,14 +175,32 @@ in the sm_state section below.
 
 May be useful for debugging, logging etc.
 
-B<NOTE> Exception in this callback would cancel the transition.
+=item * on_return => CODE( $instance, $return_value_from_handler )
 
-=item * on_event => CODE($event)
+Callback that is called before setting new state and returning a value.
+This may be useful when events are queued.
+In such case only the LAST value returned by handler is retained.
 
-If set, incoming event will be replaced by whatever is returned by CODE
-before proceeding to event handler.
+=item * on_error => CODE( $instance, $exception, $leftover_event_queue )
+
+Callback that is called when handler or ANY of other numerous callbacks die.
+It may be used to restore the machine back to a consistent state,
+or to provide some diagnostics to the user.
+
+After execution of this callback, $@ gets rethrown.
+This may change in the future.
+
+B<NOTE> One may try to feed queue to handle_event,
+but it may cause a deep recursion for now:
+
+    on_error => sub {
+        my ($self, $err, $queue) = @_;
+        $self->handle_event( @$queue ); # possible, but fishy
+    },
 
 =back
+
+B<NOTE> Exception in ANY of these callbacks would cancel the transition.
 
 sm_init MUST be called no more than once, and before ANY sm_state calls.
 
@@ -493,15 +519,14 @@ See C<sm_init> above for the rest of possible options.
 
 my %new_args;
 $new_args{$_}++ for qw( id instance_class initial_state strict
-	on_state_change on_event );
+	on_event on_state_change on_return on_error );
 
 sub new {
 	my ($class, %args) = @_;
 
-	croak __PACKAGE__."->new: on_state_change must be a subroutine"
-		unless _is_sub($args{on_state_change});
-	croak __PACKAGE__."->new: on_event must be a subroutine"
-		unless _is_sub($args{on_event});
+	_is_sub($args{$_}) or croak __PACKAGE__."->new: $_ must be a subroutine"
+		for qw( on_event on_state_change on_return on_error );
+
 	if (my $parent = delete $args{parent}) {
 		return $parent->clone( %args );
 	};
@@ -764,6 +789,7 @@ sub handle_event {
 	my $ret;
 	# we need to restore queue on failure, so eval the whole thing...
 	eval {
+		my $on_return = $self->{on_return};
 		while (@_) {
 			local $_ = shift;
 			# Coerce event, if needed...
@@ -815,10 +841,16 @@ sub handle_event {
 				$instance->state( $new_state );
 			};
 
+			# execute return data callback, if any
+			$on_return and $on_return->($instance, $ret);
 		}; # while
 	}; # eval
+	my $queue = $instance->sm_queue;
 	$instance->sm_queue( undef );
-	die $@ if $@;
+	if ($@) {
+		$self->{on_error} and $self->{on_error}->( $instance, $@, $queue );
+		die $@;
+	};
 
 	return $ret;
 };
