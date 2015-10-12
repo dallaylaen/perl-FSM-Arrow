@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0604;
+our $VERSION = 0.0605;
 
 =head1 DESCRIPTION
 
@@ -161,8 +161,9 @@ B<NOTE> Only one parent may be supplied.
 
 =item * on_event => CODE($event)
 
-If set, incoming event will be replaced by whatever is returned by CODE
-before proceeding to event handler.
+If set, incoming events will be replaced by whatever is returned by CODE
+in list context.
+C<return ();> or C<return;> by CODE will prevent event from getting to SM.
 
 This may be useful if you want to receive some raw data and change it to
 L<FSM::Arrow::Event>. See also EVENT GENERATORS in L<FSM::Arrow::Util>.
@@ -764,21 +765,32 @@ sub spawn {
 	return $instance;
 };
 
-=head3 handle_event( $instance, $event )
+=head3 handle_event( $instance, $event || @events )
 
-Process event based on $instance->state and state definition.
+Process event(s) based on $instance->state and state definition.
 Adjust state accordingly.
 
-Return is determined by state handler's second optional return value.
+Returned value is determined by state handler's second optional return value.
 See sm_state above for HANDLER discussion.
+If multiple events are processed, the LAST such return value is used.
 
-This is normally called as $instance->handle_event( $event ) and not directly.
+This is normally invoked via C<$instance-\>handle_event( $event )>
+and not directly.
+
+This function is reenterable, i.e. a SM object may send events to other SMs
+or even itself, and all this keeps working as expected.
 
 =cut
 
+# This is the very core of this module.
 sub handle_event {
 	my $self = shift;
 	my $instance = shift;
+
+	# Coerce incoming events, if needed
+	if (my $code = $self->{on_event}) {
+		@_ = map { $code->($_); } @_;
+	};
 
 	if ( my $queue = $instance->sm_queue ) {
 		push @$queue, @_;
@@ -792,9 +804,6 @@ sub handle_event {
 		my $on_return = $self->{on_return};
 		while (@_) {
 			local $_ = shift;
-			# Coerce event, if needed...
-			$_ = $self->{on_event}->($_)
-				if $self->{on_event};
 
 			my $old_state = $instance->state;
 			my $new_state;
@@ -856,7 +865,7 @@ sub handle_event {
 	$instance->sm_queue( undef );
 
 	return $ret;
-};
+}; # end sub handle_event
 
 sub _croak {
 	croak $_[0]->id.": $_[1]";
