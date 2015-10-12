@@ -8,13 +8,14 @@ WISHLIST (past version, change that was suggested during that version)
 0.06	API sm_validate; - die if bad sm
 0.06	API rename ALL Instance methods to sm_foo (except for state)
 0.06	DOC explain reenterability
+0.06	TST ae-phone client & benchmark. (A sm example itself!)
 
 FAR WISHLIST (past version, change that was suggested during that version)
 0.03 	TST push-down parser example (JSON?)
 0.03	DOC More rationale & basic SM discussion (?)
 0.03	DEV state graph object, stringify
 0.03	DEV per machine stats (now many in which state) (do we need it? )
-0.03	API state redefine properties w/o changing sub
+0.03	API state redefine properties w/o changing sub ( keep => 1 )
 0.03	TST Add distributed connected machines example.
 0.03	TST Add improved PSGI example to show inheritance power.
 0.04	TST nested machine example - low-level machine assembling events

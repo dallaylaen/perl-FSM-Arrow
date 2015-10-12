@@ -27,14 +27,18 @@ extra or slightly different states.
 * Compatibility. Can play along with Moose, Class::XSAccesor,
 fields, and Class::StateMachine w/o breaking the machine.
 
-* Optional transition restrictions (list of possible next states, final state).
+* Strict transitions and typed events - for those who need it.
 
-* Inspection tools and state change callbacks.
+* Reenterable - a machine may send more events to other machines or itself.
+
+* A lot of callbacks that can be hooked almost anywhere.
+
+* Some inspection tools.
 
 # Limitations
 
 * Due to functional nature of handlers, exact transition map
-cannot be recreated.
+cannot always be recreated.
 
 * Despite all effort, line-by-line text parser examples keep looking like 
 overengineered cryptic rubbish, which they probably are.
