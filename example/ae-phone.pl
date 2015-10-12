@@ -9,12 +9,21 @@
 # ringing -> busy,     online
 # busy    -> online,   offline
 #
-# Phone call is also a state machine:
-# [ ringing ]---->[ talking ]----->[ hangup ]
-#       |                             ^
-#       |    rejected                 |
-#       +-----------------------------+
+# Users have their file handles, and optionally a peer user they're currently
+# talking to.
+# Making a separate machine for call itself is possible,
+# but this "small example" won't fit Pierre Fermat's margins already.
 #
+# At least the possibility of state machines to coexist and send events to
+# each other is demonstrated here.
+
+# This example is run as `perl ae-phone.pl <nnnn>`
+# Then `nc localhost <nnnn>`
+# User commands (in nc) include:
+# join <nnn> - register with the "network" using that number
+# dial <nnn> - call other user
+# part       - go offline (available at any state)
+# bye        - hang up during call
 
 use strict;
 use warnings;
@@ -30,10 +39,14 @@ use lib "$Bin/../lib";
 
 # State machine definitions
 {
+	# We'll use custom event class, very stupid but somewhat helpful.
 	package My::Event;
 	use parent 'FSM::Arrow::Event';
 	use Class::XSAccessor accessors => { is_mt => 'is_mt', number => 'number' };
 	use overload '""' => \&as_string;
+
+	# is_mt means "mobile terminated", that is, FROM network TO user
+	# Events coming FROM user TO network are called "mobile originating", or MO
 
 	sub as_string {
 		my $self = shift;
@@ -44,35 +57,14 @@ use lib "$Bin/../lib";
 		return My::SM::Handset->get_user( $_[0]->number );
 	};
 
+	# The state machine. It's REALLY big and nasty.
+	# But you production app's one will be even bigger and nastier.
 	package My::SM::Handset;
 	use FSM::Arrow qw(:class);
 	use FSM::Arrow::Util qw(:all);
 
 	use Class::XSAccessor accessors => {
 		number => 'number', call => 'call', fh => 'fh' };
-
-	sub new {
-		my $class = shift;
-		return $class->SUPER::new( number => 0, @_);
-	};
-
-	sub on_input {
-		my ($self, @raw) = @_;
-
-		foreach (@raw) {
-			my $ret;
-			next if defined $_ and $_ !~ /\S/;
-			if ( defined $_ and /^\s*check/ ) {
-				$ret = sprintf "num=%s, state=%s"
-					, $self->number || 'offline', $self->state;
-			} else {
-				$ret = eval { $self->handle_event($_) } // '(silent)';
-			};
-			$self->reply( ">> ", "number=", $self->number || 'off'
-				, ", state=", $self->state
-				, ($self->call ? ", call=". $self->call->number : ()));
-		};
-	};
 
 	sm_init strict => 1,
 		on_event => event_maker_regex (
@@ -127,7 +119,6 @@ use lib "$Bin/../lib";
 		die "No such user " . $_->number
 			unless $peer;
 
-		# TODO here will be new SM!
 		$self->call( $peer );
 		$self->call->handle_event( $self->mk_event("ring") );
 		"Calling ".$peer->number;
@@ -141,8 +132,7 @@ use lib "$Bin/../lib";
 
 	sm_state 'calling';
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
-	sm_transition y    => 'busy',    handler => sub {
-		"Talking to ".$_[0]->call->number };
+	sm_transition y    => 'busy';
 	sm_transition bye  => 'online',  handler => sub { "Call rejected" };
 	sm_transition ring => 'calling', handler => sub {
 		my $self = shift;
@@ -161,10 +151,13 @@ use lib "$Bin/../lib";
 	sm_transition y    => 'busy',    handler => sub {
 		my $self = shift;
 		$self->call->handle_event( $self->mk_event( "y" ) );
-		"Talking to ".$self->call->number;
+		return;
 	};
 
-	sm_state 'busy';
+	sm_state 'busy', on_enter => sub {
+		my $self = shift;
+		$self->reply( "Talking to ".$self->call->number."..." );
+	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
 	sm_transition bye  => 'online',  handler => sub { "Hangup" };
 
@@ -172,12 +165,14 @@ use lib "$Bin/../lib";
 	my $bad = __PACKAGE__->new->schema->validate();
 	die "VIOLATIONS" . Data::Dumper::Dumper($bad) if $bad;
 
+	# Simplify sending events to peer.
 	sub mk_event {
 		my ($self, $type) = @_;
 		return My::Event->new(
 			type => $type, number => $self->number, is_mt => 1 );
 	};
 
+	# Some primitive data storage. Imagine a DB here!
 	our %users;
 	sub sign_on {
 		my ($self, $number) = @_;
@@ -203,6 +198,15 @@ use lib "$Bin/../lib";
 	};
 
 	# IO primitives
+	sub on_input {
+		my ($self, $raw) = @_;
+
+		eval { $self->handle_event($raw) }
+			if !defined $raw or $raw =~ /\S/;
+		$self->reply( ">> ", "number=", $self->number || 'off'
+			, ", state=", $self->state
+			, ($self->call ? ", call=". $self->call->number : ()));
+	};
 
 	sub reply {
 		my $self = shift;
@@ -215,11 +219,10 @@ use lib "$Bin/../lib";
 			print $msg;
 		};
 	};
-
-	package My::SM::Call;
-	use FSM::Arrow qw(:class);
 };
 # end state machine definitions
+
+### Here comes the main loop
 
 my $port = shift;
 
@@ -235,11 +238,9 @@ if (!$port) {
 	exit 0;
 };
 
-# TODO real ae
-# Main loop
+# TODO want --help and --show (for showing machine) here
 
-# Listen
-
+# Listen to socket, create machines on the fly
 my $listen = tcp_server undef, $port, sub {
 	my ($fh, $host, $port) = @_;
 
@@ -259,17 +260,20 @@ my $listen = tcp_server undef, $port, sub {
 			$machine = undef;
 		},
 		on_error => sub {
-			warn "Error in socket: ".shift;
+			# Avoid one SIGPIPE taking the server down
 			$machine->fh( undef );
 			$machine->on_input(undef);
 			$machine = undef;
 		},
 	);
 	$machine->fh( $handle );
+	# NOTE machine and handle create a loop.
+	# So need we to undef carefully to avoid leaks.
 
 	warn "    Peer joined($handle): $host:$port";
 };
 
+# Enter main loop...
 my $cv = AnyEvent->condvar;
 $SIG{INT} = sub {
 	warn "Shutting down...";
@@ -277,7 +281,4 @@ $SIG{INT} = sub {
 	$cv->send;
 };
 $cv->recv;
-
-# Client joined => attach state machine to socket
-# Data comes => parse events
 

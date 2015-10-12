@@ -7,7 +7,6 @@ WISHLIST (past version, change that was suggested during that version)
 		enter passwd)
 
 FAR WISHLIST (past version, change that was suggested during that version)
-0.02	TST anyevent example
 0.03 	TST push-down parser example (JSON?)
 0.03	DOC More rationale & basic SM discussion (?)
 0.03	DEV state graph object, stringify
