@@ -6,6 +6,8 @@ use strict;
 use warnings;
 use Test::More;
 
+BEGIN { $ENV{FSM_ARROW_NOXS} = 1 };
+
 my $sm = My::Machine->new;
 
 is ($sm->state, 'initial', "initial state holds");
@@ -28,6 +30,7 @@ done_testing;
 BEGIN {
 package My::Machine;
 
+use base qw(FSM::Arrow::Instance);
 use fields qw(weird_user_data);
 use FSM::Arrow qw(:class);
 
