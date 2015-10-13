@@ -5,7 +5,6 @@ WISHLIST (past version, change that was suggested during that version)
 0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
 0.04	TST Expect example (run external program, control execution flow,
 		enter passwd)
-0.06	API sm_validate; - die if bad sm
 0.06	API rename ALL Instance methods to sm_foo (except for state)
 0.06	DOC explain reenterability
 0.06	TST ae-phone client & benchmark. (A sm example itself!)

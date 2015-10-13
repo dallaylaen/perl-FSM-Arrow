@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0605;
+our $VERSION = 0.0606;
 
 =head1 DESCRIPTION
 
@@ -119,8 +119,9 @@ use Carp;
 use Scalar::Util qw(blessed);
 use Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( sm_init sm_state sm_transition );
-our %EXPORT_TAGS = ( class => [qw[ sm_init sm_state sm_transition ]] );
+my @CLASS = qw( sm_init sm_state sm_transition sm_validate );
+our @EXPORT_OK = @CLASS;
+our %EXPORT_TAGS = ( class => \@CLASS );
 
 our @CARP_NOT = qw(FSM::Arrow::Instance);
 
@@ -399,6 +400,40 @@ sub sm_transition($$@) { ## no critic
 		unless $old_state;
 	$schema->add_transition(
 		$old_state => $new_state, event => $types, @options );
+};
+
+=head3 sm_validate
+
+Check state machine for consistency.
+Can be called as a method, static method, or prototyped sub w/o argiments.
+In latter case, calling package is assumed as argument.
+
+Dies if violations found, returns nothing otherwise.
+
+The following checks exist for now:
+
+=over
+
+=item * No transitions no nonexistent states exist;
+
+=item * If strict => 1 was specified, all final states are marked as such.
+
+=back
+
+=cut
+
+sub sm_validate (;$) { ## no critic
+	my $caller = shift || caller;
+	my $sm = ref $caller ? $caller->schema : $caller->get_default_sm;
+
+	croak __PACKAGE__."->validate called by ".(ref $caller || $caller)
+		.", but no SM schema could be found"
+			unless $sm;
+
+	my $bad = $sm->validate;
+	return unless $bad;
+	croak __PACKAGE__."->validate(".(ref $caller || $caller)
+		."): violations found: ".join "; ", @$bad;
 };
 
 sub _sm_init_schema {

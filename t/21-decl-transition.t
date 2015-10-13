@@ -6,6 +6,7 @@ use Test::More;
 
 use FSM::Arrow::Event;
 
+my @valid;
 {
 	package My::SM;
 	use Carp;
@@ -13,16 +14,33 @@ use FSM::Arrow::Event;
 
 	our @follow;
 
+	sm_init strict => 1;
+
 	sm_state one => sub { croak "No handler allowed" }, next => [];
 	sm_transition 0 => 'two';
 	sm_transition 1 => 'three', on_follow => sub { push @follow, \@_ };
 
+	eval { sm_validate };
+	push @valid, $@;
+
 	sm_state two => sub { croak "No handler allowed" }, next => [];
+
+	eval { sm_validate };
+	push @valid, $@;
+
 	sm_transition 0 => 'two';
 	sm_transition 1 => 'one', handler => sub { "return" };
 
 	sm_state three => sub {}, final => 1, accepting => 1;
+
+	eval { sm_validate };
+	push @valid, $@;
 };
+
+note explain \@valid;
+like $valid[0], qr(extra transition), "Extra transitions";
+like $valid[1], qr(final.*not.*marked), "Final state";
+is   $valid[-1], '', "Last schema correct";
 
 my $sm = My::SM->new;
 
