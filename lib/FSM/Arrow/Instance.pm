@@ -37,7 +37,7 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 =cut
 
 ## no critic (RequireArgUnpacking)
-our $VERSION = 0.0603;
+our $VERSION = 0.060301;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -81,7 +81,7 @@ sub new {
 		if @_ % 2;
 
 	my %args = @_;
-	$args{sm_schema} ||= $class->get_default_sm;
+	$args{sm_schema} ||= $class->sm_schema_default;
 	$args{state}  ||= $args{sm_schema} && $args{sm_schema}->initial_state;
 	return bless \%args, $class;
 };
@@ -222,7 +222,7 @@ sub sm_on_construction {
 
 	my $sm_schema; # some caching for the sake of premature optimisation
 	if (!($sm_schema = $self->sm_schema)) {
-		$sm_schema = $self->get_default_sm;
+		$sm_schema = $self->sm_schema_default;
 		$self->{sm_schema} = $sm_schema; # sm_schema is a r/o accessor, so do like this
 	};
 	if ($sm_schema && !$self->state) {
@@ -232,7 +232,7 @@ sub sm_on_construction {
 	return $self;
 };
 
-=head3 get_default_sm
+=head3 sm_schema_default
 
 Returns FSM::Arrow machine for a SM class defined via declarative interface.
 
@@ -240,7 +240,7 @@ Dies unless declarative interface was indeed used.
 
 =cut
 
-sub get_default_sm {
+sub sm_schema_default {
 	croak "FSM::Arrow::Instance: 'sm_schema' argument missing in constructor"
 		." and declarative API not in use";
 };

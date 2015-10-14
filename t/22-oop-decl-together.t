@@ -12,7 +12,7 @@ use Test::More;
 	sm_state two => sub { };
 };
 
-my $sm_schema = My::SM->get_default_sm->clone;
+my $sm_schema = My::SM->sm_schema_default->clone;
 $sm_schema->add_state( one => sub { "three" } );
 $sm_schema->add_state( three => sub { } );
 

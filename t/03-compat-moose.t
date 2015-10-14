@@ -40,7 +40,7 @@ BEGIN {
 	use FSM::Arrow qw(:class);
 
 	has sm_schema => is => "ro",
-		default => sub { $_[0]->get_default_sm };
+		default => sub { $_[0]->sm_schema_default };
 	has state => is => "rw";
 	sub BUILD {
 		my $self = shift;

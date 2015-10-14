@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0608;
+our $VERSION = 0.060801;
 
 =head1 DESCRIPTION
 
@@ -424,7 +424,7 @@ The following checks exist for now:
 
 sub sm_validate (;$) { ## no critic (ProhibitSubroutinePrototypes)
 	my $caller = shift || caller;
-	my $sm = ref $caller ? $caller->sm_schema : $caller->get_default_sm;
+	my $sm = ref $caller ? $caller->sm_schema : $caller->sm_schema_default;
 
 	croak __PACKAGE__."->validate called by ".(ref $caller || $caller)
 		.", but no SM sm_schema could be found"
@@ -442,13 +442,13 @@ sub _sm_init_schema {
 	# memoize
 	return $sm_schema{ $caller } ||= do {
 		my $sm = $class->new( instance_class => $caller, @args );
-		my $get_default_sm = sub { return $sm };
+		my $sm_schema_default = sub { return $sm };
 
 		# Now magic - alter target package
 		no strict 'refs';         ## no critic (ProhibitNoStrict)
 
 		push @{ $caller.'::'.'ISA' }, 'FSM::Arrow::Instance';
-		*{ $caller.'::'.'get_default_sm' } = $get_default_sm;
+		*{ $caller.'::'.'sm_schema_default' } = $sm_schema_default;
 
 		$sm;
 	};
@@ -488,7 +488,7 @@ If FSM::Arrow::Instance constructor is used, no additional action is required.
 
 If constructor is defined from scratch, C<sm_on_construction> method
 should be called at some point.
-Alternativaly, schema may be found out via get_default_sm() method
+Alternativaly, schema may be found out via sm_schema_default() method
 and state can be set manually afterwards.
 
 See section EXTENDING in L<FSM::Arrow::Instance>.
