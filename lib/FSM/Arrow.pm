@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0606;
+our $VERSION = 0.0607;
 
 =head1 DESCRIPTION
 
@@ -115,10 +115,10 @@ See C<sm_state> below.
 
 =cut
 
+## no critic (RequireArgUnpacking) # we'll use A LOT of @_, sorry
 use Carp;
 use Scalar::Util qw(blessed);
-use Exporter;
-our @ISA = qw(Exporter);
+use base 'Exporter';
 my @CLASS = qw( sm_init sm_state sm_transition sm_validate );
 our @EXPORT_OK = @CLASS;
 our %EXPORT_TAGS = ( class => \@CLASS );
@@ -208,9 +208,9 @@ sm_init MUST be called no more than once, and before ANY sm_state calls.
 
 =cut
 
-our %sm_schema;
+my %sm_schema;
 
-sub sm_init (@) { ## no critic
+sub sm_init (@) { ## no critic (ProhibitSubroutinePrototypes)
 	croak "sm_init: FATAL: Odd number of arguments"
 		if @_%2;
 
@@ -220,13 +220,13 @@ sub sm_init (@) { ## no critic
 		if exists $sm_schema{$caller};
 
 	my %args = @_;
-	if ($args{parent} and !ref $args{parent}) {
+	if ($args{parent} && !ref $args{parent}) {
 		my $parent = $args{parent};
 
 		# try loading parent if schema not present
 		if (!exists $sm_schema{$parent}) {
 			my $file = $parent;
-			$file =~ s{::}{/}g;
+			$file =~ s{::}{/}gxs;
 			$file .= ".pm";
 			require $file;
 
@@ -236,12 +236,12 @@ sub sm_init (@) { ## no critic
 
 		$args{parent} = $sm_schema{$parent};
 		if (!$caller->isa($parent)) {
-			no strict 'refs'; ## no critic
+			no strict 'refs'; ## no critic (ProhibitNoStrict)
 			push @{ $caller.'::ISA' }, $parent;
 		}
 	};
 
-	__PACKAGE__->_sm_init_schema($caller, %args);
+	return __PACKAGE__->_sm_init_schema($caller, %args);
 };
 
 =head3 sm_state 'name' => HANDLER($self, $event), %options;
@@ -333,7 +333,7 @@ See also add_state() below.
 
 =cut
 
-sub sm_state ($@) { ## no critic
+sub sm_state ($@) { ## no critic (ProhibitSubroutinePrototypes)
 	my $name = shift;
 	my $handler = _is_sub($_[0]) ? shift : undef;
 	croak "sm_state: FATAL: Odd number of arguments"
@@ -342,7 +342,7 @@ sub sm_state ($@) { ## no critic
 	my $caller = caller;
 
 	my $schema = __PACKAGE__->_sm_init_schema($caller);
-	$schema->add_state( $name => $handler, @_ );
+	return $schema->add_state( $name => $handler, @_ );
 };
 
 =head3 sm_transition 'event_type' => 'new_state', %options;
@@ -390,7 +390,7 @@ C<sm_state ..., next => []> is ok.
 
 =cut
 
-sub sm_transition($$@) { ## no critic
+sub sm_transition($$@) { ## no critic (ProhibitSubroutinePrototypes)
 	my ($types, $new_state, @options) = @_;
 	my $caller = caller;
 
@@ -398,7 +398,7 @@ sub sm_transition($$@) { ## no critic
 	my $old_state = $schema->last_added_state;
 	croak "sm_transition: FATAL: no states added yet"
 		unless $old_state;
-	$schema->add_transition(
+	return $schema->add_transition(
 		$old_state => $new_state, event => $types, @options );
 };
 
@@ -422,7 +422,7 @@ The following checks exist for now:
 
 =cut
 
-sub sm_validate (;$) { ## no critic
+sub sm_validate (;$) { ## no critic (ProhibitSubroutinePrototypes)
 	my $caller = shift || caller;
 	my $sm = ref $caller ? $caller->schema : $caller->get_default_sm;
 
@@ -445,7 +445,7 @@ sub _sm_init_schema {
 		my $get_default_sm = sub { return $sm };
 
 		# Now magic - alter target package
-		no strict 'refs';         ## no critic
+		no strict 'refs';         ## no critic (ProhibitNoStrict)
 
 		push @{ $caller.'::'.'ISA' }, 'FSM::Arrow::Instance';
 		*{ $caller.'::'.'get_default_sm' } = $get_default_sm;
@@ -658,11 +658,11 @@ sub add_state {
 	$self->_croak( "add_state: unexpected arguments @extra" )
 		if @extra;
 	$self->_croak( "add_state: state name must be true string" )
-		unless $name and !ref $name;
+		if !$name || ref $name;
 	$self->_croak( "add_state: handler must be a subroutine" )
 		unless _is_sub($code);
 	$self->_croak( "add_state: state $name already defined" )
-		if $self->{state_lock}{ $name } and !$args{override};
+		if $self->{state_lock}{ $name } && !$args{override};
 	_is_sub( $args{$_} )
 		or $self->_croak( "add_state: $_ callback must be a subroutine" )
 		for qw(on_enter on_leave);
@@ -673,9 +673,9 @@ sub add_state {
 
 	# final state has some restrictions...
 	if ($args{final}) {
-		my @extra = grep { defined $args{$_} } qw(on_leave next);
-		$self->_croak( "add_state: options '@extra' forbidden in a final state" )
-				if @extra;
+		my @extra_cb = grep { defined $args{$_} } qw(on_leave next);
+		$self->_croak( "add_state: options '@extra_cb' forbidden in a final state" )
+				if @extra_cb;
 	};
 	if ($self->{strict}) {
 		$args{next} ||= [] unless $args{final};
@@ -698,7 +698,7 @@ sub add_state {
 		name => $name,
 		handler => $code,
 	};
-	if ( $args{initial} or !defined $self->{initial_state} ) {
+	if ( $args{initial} || !defined $self->{initial_state} ) {
 		$state->{initial} = 1;
 		$self->{initial_state} = $name;
 	};
@@ -743,9 +743,9 @@ sub add_transition {
 	$self->_croak( "add_transition: unexpected arguments @extra" )
 		if @extra;
 	$self->_croak( "add_transition: old_state must be a true string" )
-		unless $from and !ref $from;
+		if !$from || ref $from;
 	$self->_croak( "add_transition: new_state must be a true string" )
-		unless $to and !ref $to;
+		if !$to || ref $to;
 
 	my $events = $args{event};
 	$events = [] unless defined $events;
@@ -766,7 +766,7 @@ sub add_transition {
 	$state->{on_follow}{$to} = $args{on_follow}
 		if $args{on_follow};
 
-	$self;
+	return $self;
 };
 
 
@@ -782,7 +782,7 @@ sub _array_to_hash {
 	my $list = shift;
 	my %hash;
 	$hash{$_} = 1 for @$list;
-	\%hash;
+	return \%hash;
 };
 
 =head3 spawn()
@@ -827,7 +827,8 @@ sub handle_event {
 		@_ = map { $code->($_); } @_;
 	};
 
-	if ( my $queue = $instance->sm_queue ) {
+	my $queue = $instance->sm_queue;
+	if ( $queue ) {
 		push @$queue, @_;
 		return;
 	};
@@ -835,7 +836,7 @@ sub handle_event {
 	$instance->sm_queue( \@_ );
 	my $ret;
 	# we need to restore queue on failure, so eval the whole thing...
-	eval {
+	my $success = eval {
 		my $on_return = $self->{on_return};
 		while (@_) {
 			local $_ = shift;
@@ -860,12 +861,12 @@ sub handle_event {
 			};
 
 			# If state changed
-			if ($new_state and !$rules->{final}) {
+			if ($new_state && !$rules->{final}) {
 				# check transition legality
 				$self->_croak("Illegal transition '$old_state'->'$new_state'(nonexistent)")
 					unless exists $self->{states}{ $new_state };
 				$self->_croak("Illegal transition '$old_state'->'$new_state'(forbidden)")
-					if $rules->{next} and !$rules->{next}{ $new_state };
+					if $rules->{next} && !$rules->{next}{ $new_state };
 
 				# execute callbacks: leave, enter, generic callback
 				my $cblist = $rules->{cache_cb}{$new_state} ||= [
@@ -878,7 +879,7 @@ sub handle_event {
 					)
 				];
 				foreach my $callback ( @$cblist ) {
-					$callback and $callback->( $instance, $old_state, $new_state, $_ );
+					$callback->( $instance, $old_state, $new_state, $_ );
 				};
 
 				# finally, set state
@@ -888,14 +889,16 @@ sub handle_event {
 			# execute return data callback, if any
 			$on_return and $on_return->($instance, $ret);
 		}; # while
+		1;
 	}; # eval
 
-	if ($@) {
+	if (!$success) {
+		my $err = $@;
 		# get queue before unsetting...
-		my $queue = $instance->sm_queue;
+		$queue = $instance->sm_queue;
 		$instance->sm_queue( undef );
-		$self->{on_error} and $self->{on_error}->( $instance, $@, $queue );
-		die $@;
+		$self->{on_error} and $self->{on_error}->( $instance, $err, $queue );
+		die $err;
 	};
 	$instance->sm_queue( undef );
 
@@ -982,7 +985,7 @@ sub validate {
 
 		if ($self->{strict}) {
 			push @violations, "final state $state not marked as such"
-				if !@{ $rules->{next} } and !$rules->{final};
+				if !@{ $rules->{next} } && !$rules->{final};
 		};
 	};
 	return @violations ? \@violations : 0;
