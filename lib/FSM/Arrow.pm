@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.060801;
+our $VERSION = 0.060802;
 
 =head1 DESCRIPTION
 
@@ -459,32 +459,42 @@ sub _sm_init_schema {
 A state machine instance class, or B<$instance> hereafter,
 MUST exhibit the following properties for the machine to work correctly.
 
-C<$instance> must be a descendant of L<FSM::Arrow::Instance> class.
+=over
+
+=item * C<$instance> must be a descendant of L<FSM::Arrow::Instance> class.
 This is enforced by the first use of sm_init or sm_state.
 
-C<$instance-\>sm_schema()> getter method must be present.
+=item * C<$instance-\>sm_schema()> getter method must be present.
 Its return value must be the same C<FSM::Arrow> object
 throughout the instance lifetime.
 
-C<$instance-\>state( [new_value] )> accessor method must be present.
+=item * C<$instance-\>state( [new_value] )> accessor method must be present.
 
-Constructor must set both state and sm_schema.
+=item * Constructor must set both state and sm_schema, even if called without
+parameters.
 
-$instance->handle_event($event) method must be left intact, or call
-C<$instance-\>scheme-\>handle_event($instance, $event)>
+=item * $instance->handle_event($event) method must be left intact, or call
+SUPER or C<$instance-\>scheme-\>handle_event($instance, $event)>
 at some point if redefined.
 
-The following methods are present in FSM::Arrow::Instance,
-and should be redefined with care, though they don't affect
-handle_event per se:
-
-C<is_final>, C<accepting>, C<get_initial_state>.
-
-Additionally, if OO interface's method spawn() is in use (see below),
+=item * Additionally, if OO interface's method spawn() is in use (see below),
 the constructor must be named C<new()>, and must accept at least
 C<new(sm_schema =\> $object)> parameters.
 
-If FSM::Arrow::Instance constructor is used, no additional action is required.
+=back
+
+The following methods are present in FSM::Arrow::Instance,
+and should be redefined with care:
+
+C<is_final>, C<accepting>.
+
+User methods starting with C<sm_> should not be defined in FSM::Arrow::Instance
+descendants as such names may be taken by future versions of FSM::Arrow.
+
+=head3 Taking care of your custom instance class.
+
+If FSM::Arrow::Instance constructor is left intact or called via SUPER,
+no additional action is required.
 
 If constructor is defined from scratch, C<sm_on_construction> method
 should be called at some point.
