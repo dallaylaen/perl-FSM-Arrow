@@ -47,20 +47,31 @@ overengineered cryptic rubbish, which they probably are.
 
 ## Modules under lib/
 
-Module               | What it is for
----|---
-FSM::Arrow           | Main module, contains machine schema class and
-                     | declarative interface which is available 
-                     | via `use FSM::Arrow qw(:class);`.
----|---
-FSM::Arrow::Instance | Machine instance base class.
----|---
-FSM::Arrow::Event    | Machine may digest events of any type 
-                     | (text strings, unblessed refs, custom objects). 
-                     | However, if strictly defined transitions are preferrable,
-                     | this class should be used.
----|---
-FSM::Arrow::Util     | This class exports a few convenient callback generators.
+<table><tr>
+<th>Module</th>
+<th>What it is for</th>
+</tr><tr>
+<td>FSM::Arrow</td>
+<td>   Main module, contains machine schema class and
+       declarative interface which is available 
+       via `use FSM::Arrow qw(:class);`.
+</td>
+</tr><tr>
+<td>FSM::Arrow::Instance</td>
+<td>   Machine instance base class.
+</td>
+</tr><tr>
+<td>FSM::Arrow::Event</td>
+<td>   Machine may digest events of any type 
+       (text strings, unblessed refs, custom objects). 
+       However, if strictly defined transitions are preferrable,
+       this class should be used.
+</td>
+</tr><tr>
+<td>FSM::Arrow::Util</td>
+<td>   This class exports a few convenient callback generators.
+</td>
+</tr></table>
 
 ## Examples under example/
 
