@@ -2,6 +2,8 @@ FSM-Arrow
 
 FSM::Arrow - an event-driven inheritable generic state machine.
 
+See README.md, this file may be outdated.
+
 INSTALLATION
 
 To install this module, run the following commands:

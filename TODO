@@ -5,7 +5,6 @@ WISHLIST (past version, change that was suggested during that version)
 0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
 0.04	TST Expect example (run external program, control execution flow,
 		enter passwd)
-0.06	API rename ALL Instance methods to sm_foo (except for state)
 0.06	DOC explain reenterability
 0.06	TST ae-phone client & benchmark. (A sm example itself!)
 
@@ -27,6 +26,8 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.06	API sm_transition_from (name?) - add transition to non-current state
 0.06	API stateless events - don't depend on state, don't trigger state change
 0.06	DEV Add typed transitions to pretty-print
+0.06	API rename Instance methods (handle_event, is_final, accepting) to sm_*
+0.06	DOC More concrete README.md
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?
