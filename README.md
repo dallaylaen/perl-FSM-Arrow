@@ -51,11 +51,14 @@ Module               | What it is for
 ---|---
 FSM::Arrow           | Main module, contains machine schema class and
 declarative interface which is available via `use FSM::Arrow qw(:class);`.
+---|---
 FSM::Arrow::Instance | Machine instance base class.
+---|---
 FSM::Arrow::Event    | Machine may digest events of any type 
 (text strings, unblessed refs, custom objects). 
 However, if strictly defined transitions are preferrable,
 this class should be used.
+---|---
 FSM::Arrow::Util     | This class exports a few convenient callback generators.
 
 ## Examples under example/
@@ -64,14 +67,20 @@ File name               | What it demonstrates
 ---|---
 bench.pl                | Run this file to determine relative speed of
 different SM usage scenarios.
+---|---
 bit-string.pl           | Shows simple text-based machine.
 This one has line-by-line commentary.
+---|---
 transition.pl           | Shows how typed transitions can be used.
 This one has line-by-line commentary.
+---|---
 bit-string-accepting.pl | Shows how *accepting* states can be used. 
+---|---
 markdown.pl             | Reads markdown line by line.
+---|---
 runner.psgi             | PSGI stateful web-service example.
 Needs plack server to run under.
+---|---
 ae-phone.pl             | AnyEvent-based reenterable state machine.
 This one is huge actually.
 
