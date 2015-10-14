@@ -2,14 +2,14 @@
 
 Event-driven state machine with declarative interface.
 
-# Intended usage
+# Intended usage overview
 
-1. Declare states as (`name`, `sub { HANDLER }`) pairs.
-Handler returns next state when called.
+1. Start out machine schema, declare states and transitions.
 
-2. Create machine. Multiple independent instances may exist.
+2. Create concrete machine. 
+Multiple independent instances may exist at the same time.
 
-3. Feed events to machine, receive replies if needed.
+3. Feed events to machine via `handle_event` method, receive replies if needed.
 Both events and replies may be of any form.
 
 Also save/load to/from storage may be added around step 3.
@@ -42,6 +42,67 @@ cannot always be recreated.
 
 * Despite all effort, line-by-line text parser examples keep looking like 
 overengineered cryptic rubbish, which they probably are.
+
+# Data model
+
+Property        | **FSM::Arrow**      | **FSM::Arrow::Instance**
+----------------|---------------------|----
+Contains        | state definitions   | current state
+Also contains   | common metadata     | user-defined context data
+Has             | many Instances      | one and only Schema
+Can             | spawn new Instance  | return existing Schema via `sm_schema`
+Changes         | almost never        | very often
+Events are sent |                     | **here** via `handle_event()`
+
+# Package content
+
+## Modules under lib/
+
+- **FSM::Arrow** -
+Main module, contains machine schema class and
+declarative interface which is available 
+via use FSM::Arrow qw(:class);
+
+- **FSM::Arrow::Instance** -
+Machine instance base class.
+
+- **FSM::Arrow::Event** -
+Machine may digest events of any type 
+(text strings, unblessed refs, custom objects). 
+However, if strictly defined transitions are preferrable,
+this class should be used.
+
+- **FSM::Arrow::Util** -
+This class exports a few convenient callback generators.
+
+
+
+## Examples under example/
+
+- **bench.pl** - 
+Run this file to determine relative speed of
+different SM usage scenarios.
+ 
+- **bit-string.pl** -
+Shows simple text based machine.
+*This one has line by line commentary.*
+ 
+- **transition.pl** -
+Shows how typed transitions can be used.
+ 
+- **bit-string-accepting.pl** -
+Shows how *accepting* states can be used. 
+
+- **markdown.pl** -
+Reads text line by line.
+ 
+- **runner.psgi** -
+[PSGI](https://metacpan.org/pod/PSGI) stateful web service example.
+Needs plack server to run under.
+ 
+- **ae-phone.pl** -
+[AnyEvent](https://metacpan.org/pod/AnyEvent)-based reenterable state machine.
+Needs AnyEvent. This one is huge actually.
 
 # Installation
 
