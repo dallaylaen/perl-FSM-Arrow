@@ -4,9 +4,9 @@ use strict;
 use warnings;
 use Test::More;
 
-use FSM::Arrow::Util qw(handler_regex_chain);
+use FSM::Arrow::Util qw(sm_handler_regex);
 
-my $handler = handler_regex_chain(
+my $handler = sm_handler_regex(
 	qr(foo) => "foo",
 	qr(bar) => [ "bar", "went" ],
 	qr(baz(.*)) => [ sub { "baz" }, sub { $_[2] } ],
@@ -24,7 +24,7 @@ is_deeply [ $sub->("food")    ], [ "foo", undef  ], "Simple state change";
 is_deeply [ $sub->("bard")    ], [ "bar", "went" ], "State change with return";
 is_deeply [ $sub->("bazooka") ], [ "baz", "ooka" ], "sub substitution";
 
-$handler = handler_regex_chain(
+$handler = sm_handler_regex(
 	unknown => [ "xxx", sub { /(...)/ and $1 } ],
 	undef   => "stop",
 );

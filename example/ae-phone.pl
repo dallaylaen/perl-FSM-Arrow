@@ -66,7 +66,7 @@ use lib "$Bin/../lib";
 		number => 'number', call => 'call', fh => 'fh' };
 
 	sm_init strict => 1,
-		on_event => event_maker_regex (
+		on_event => sm_on_event_regex (
 			class => "My::Event",
 			regex => qr/(?<type>[a-z]\w*)(\s\D*(?<number>\d+))?/,
 			undef => 'part',

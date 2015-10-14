@@ -15,12 +15,12 @@ This package contains subroutine generators for some of such cases.
 
 =cut
 
-our $VERSION = 0.0601;
+our $VERSION = 0.0602;
 
 use Exporter;
 
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( handler_regex_chain event_maker_regex );
+our @EXPORT_OK = qw( sm_handler_regex sm_on_event_regex );
 our %EXPORT_TAGS = ( all => \@EXPORT_OK );
 
 use Carp;
@@ -36,12 +36,12 @@ B<NOTE> This module is subject to rapid change.
 
 =head2 HANDLERS
 
-=head3 handler_regex_chain( /regex/ => [next_state, do_something], ... )
+=head3 sm_handler_regex( /regex/ => [next_state, do_something], ... )
 
 =cut
 
-sub handler_regex_chain {
-	croak "handler_chained_regex: FATAL: odd number of arguments"
+sub sm_handler_regex {
+	croak "sm_handler_regex: FATAL: odd number of arguments"
 		if @_ % 2;
 
 	my $rules = [];
@@ -58,7 +58,7 @@ sub handler_regex_chain {
 		} elsif ($condition eq 'unknown') {
 			$default = $action;
 		} else {
-			croak "handler_chained_regex: FATAL: Unexpected condition $condition";
+			croak "sm_handler_regex: FATAL: Unexpected condition $condition";
 		};
 	};
 
@@ -86,7 +86,7 @@ sub handler_regex_chain {
 
 =head2 EVENT GENERATORS
 
-=head3 event_maker_regex ( %args )
+=head3 sm_on_event_regex ( %args )
 
 Static method, returns a coderef that constructs
 FSM::Arrow::Event from given string.
@@ -117,11 +117,11 @@ If unspecified, the returned sub will die at this point.
 
 =cut
 
-sub event_maker_regex {
+sub sm_on_event_regex {
 	my (%args) = @_;
 
 	defined $args{regex} or croak __PACKAGE__
-		."event_maker_regex: FATAL: regex parameter must be present";
+		."sm_on_event_regex: FATAL: regex parameter must be present";
 
 	my $re = $args{regex};
 	$re = qr($re) unless ref $re eq 'Regexp';
@@ -132,7 +132,7 @@ sub event_maker_regex {
 	my $nomatch = $args{nomatch};
 
 	$class->isa("FSM::Arrow::Event")
-		or croak "event_maker_regex: FATAL: "
+		or croak "sm_on_event_regex: FATAL: "
 			."class argument must be FSM::Arrow::Event descendant";
 
 	return sub {
