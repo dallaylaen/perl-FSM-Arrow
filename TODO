@@ -26,6 +26,7 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.06	API strict vs inheritance -rule out
 0.06	API sm_transition_from (name?) - add transition to non-current state
 0.06	API stateless events - don't depend on state, don't trigger state change
+0.06	DEV Add typed transitions to pretty-print
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?
