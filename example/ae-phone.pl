@@ -31,7 +31,6 @@ use 5.010; # we'll need named captures - sorry, 5.8...
 use AnyEvent::Strict;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
-use Data::Dumper;
 
 # Always want latest & greatest FSM
 use FindBin qw($Bin);
@@ -73,7 +72,7 @@ use lib "$Bin/../lib";
 			undef => 'part',
 		),
 		on_state_change => sub {
-			warn "    SM ". ($_[0]->number // '[offline]')
+			print "#     SM ". ($_[0]->number // '[offline]')
 				. " $_[1] => $_[2] via '$_'; q=[@{$_[0]->sm_queue}]\n";
 		},
 		on_return => sub {
@@ -269,13 +268,13 @@ my $listen = tcp_server undef, $port, sub {
 	# NOTE machine and handle create a loop.
 	# So need we to undef carefully to avoid leaks.
 
-	warn "    Peer joined($handle): $host:$port";
+	print "#    Peer joined($handle): $host:$port";
 };
 
 # Enter main loop...
 my $cv = AnyEvent->condvar;
 $SIG{INT} = sub {
-	warn "Shutting down...";
+	print "# Shutting down...";
 	$_->on_input(undef) for My::SM::Handset->get_all;
 	$cv->send;
 };
