@@ -1,7 +1,7 @@
+package FSM::Arrow::Instance;
+
 use strict;
 use warnings;
-
-package FSM::Arrow::Instance;
 
 =head1 NAME
 
@@ -36,7 +36,8 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 
 =cut
 
-our $VERSION = 0.0601;
+## no critic (RequireArgUnpacking)
+our $VERSION = 0.0602;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -98,7 +99,7 @@ B<NOTE> The state MAY be changed after this call.
 sub handle_event {
 	# Delegate the hard work to FSM::Arrow
 	# so that all concerted code modifications are local to that file.
-	$_[0]->schema->handle_event(@_);
+	return $_[0]->schema->handle_event(@_);
 };
 
 =head2 state()
@@ -117,7 +118,7 @@ as state change callbacks and limitations will be ignored.
 
 # NOTE We're already setting default state in constructor, however,
 # using Moose would override constructor.
-sub state {
+sub state { ## no critic (ProhibitBuiltinHomonyms)
 	my $self = shift;
 
 	return $self->{state} unless @_;
@@ -224,7 +225,7 @@ sub sm_on_construction {
 		$schema = $self->get_default_sm;
 		$self->{schema} = $schema; # schema is a r/o accessor, so do like this
 	};
-	if ($schema and !$self->state) {
+	if ($schema && !$self->state) {
 		$self->state( $schema->initial_state );
 	};
 
