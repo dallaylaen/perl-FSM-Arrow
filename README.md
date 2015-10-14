@@ -48,7 +48,7 @@ overengineered cryptic rubbish, which they probably are.
 ## Modules under lib/
 
 Module               | What it is for
------
+---|---
 FSM::Arrow           | Main module, contains machine schema class and
 declarative interface which is available via `use FSM::Arrow qw(:class);`.
 FSM::Arrow::Instance | Machine instance base class.
@@ -61,7 +61,7 @@ FSM::Arrow::Util     | This class exports a few convenient callback generators.
 ## Examples under example/
 
 File name               | What it demonstrates
--------
+---|---
 bench.pl                | Run this file to determine relative speed of
 different SM usage scenarios.
 bit-string.pl           | Shows simple text-based machine.
