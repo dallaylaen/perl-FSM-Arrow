@@ -43,6 +43,17 @@ cannot always be recreated.
 * Despite all effort, line-by-line text parser examples keep looking like 
 overengineered cryptic rubbish, which they probably are.
 
+# Data model
+
+Property        | **FSM::Arrow**      | **FSM::Arrow::Instance**
+----------------|---------------------|----
+Contains        | state definitions   | current state
+Also contains   | common metadata     | user-defined context data
+Has             | many Instances      | one and only Schema
+Can             | spawn new Instance  | return existing Schema via `sm_schema`
+Changes         | almost never        | very often
+Events are sent |                     | **here** via `handle_event()`
+
 # Package content
 
 ## Modules under lib/
