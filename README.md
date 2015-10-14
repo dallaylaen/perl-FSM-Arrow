@@ -89,7 +89,6 @@ Shows simple text based machine.
  
 - **transition.pl** -
 Shows how typed transitions can be used.
-*This one has line by line commentary.*
  
 - **bit-string-accepting.pl** -
 Shows how *accepting* states can be used. 
