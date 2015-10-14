@@ -40,13 +40,13 @@ my @valid;
 note explain \@valid;
 like $valid[0], qr(extra transition), "Extra transitions";
 like $valid[1], qr(final.*not.*marked), "Final state";
-is   $valid[-1], '', "Last schema correct";
+is   $valid[-1], '', "Last sm_schema correct";
 
 my $sm = My::SM->new;
 
-note $sm->schema->pretty_print;
+note $sm->sm_schema->pretty_print;
 
-# note "schema = ",explain $sm->schema;
+# note "sm_schema = ",explain $sm->sm_schema;
 
 eval {
 	$sm->handle_event(1);
@@ -99,7 +99,7 @@ like ($err, qr(No handler allowed), "No unexpected transitions");
 # NOTE no tests below this one - structure is BROKEN
 
 # Make clone
-my $orig = $sm->schema;
+my $orig = $sm->sm_schema;
 my $clone = $orig->clone;
 
 # Remove known difference
@@ -111,8 +111,8 @@ delete $clone->{id};
 # Compare!
 is_deeply( $clone, $orig, "Clone still works" )
 	or do {
-		diag "old schema = ", explain $orig;
-		diag "new schema = ", explain $clone;
+		diag "old sm_schema = ", explain $orig;
+		diag "new sm_schema = ", explain $clone;
 	};
 
 done_testing;

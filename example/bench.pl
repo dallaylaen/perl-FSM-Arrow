@@ -59,7 +59,7 @@ if ($has_xs) {
 
 	Class::XSAccessor->import (
 		accessors => { state => "state" },
-		getters => { schema => "schema" }
+		getters => { sm_schema => "sm_schema" }
 	);
 	sm_state flip => sub { "flop" };
 	sm_state flop => sub { "flip" };
@@ -87,7 +87,7 @@ if ($has_xs) {
 	use FSM::Arrow qw(:class);
 	Class::XSAccessor->import(
 		accessors => { state => "state" },
-		getters => { schema => "schema" }
+		getters => { sm_schema => "sm_schema" }
 	);
 
 	sm_state flip => sub {};
@@ -132,7 +132,7 @@ if ($has_xs) {
 	sub descr { "Makes event via callback, all XS" };
 
 	Class::XSAccessor->import(
-		getters => { schema => "schema" },
+		getters => { sm_schema => "sm_schema" },
 		accessors => { state => "state" },
 	);
 	use FSM::Arrow qw(:class);

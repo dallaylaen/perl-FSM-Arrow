@@ -33,7 +33,7 @@ use lib "$Bin/../lib";
                                      # At this point, current package
                                      # is a FSM::Arrow::Instance descendant
                                      # and has new(), state(),
-                                     # schema(), and handle_event() methods.
+                                     # sm_schema(), and handle_event() methods.
 
     sm_state s1 => sub {             # Second state goes...
         $_ eq 0 and return s0 => 1;
@@ -56,7 +56,7 @@ use lib "$Bin/../lib";
 
 # Now fun...
 
-print My::SM::Triple->new->schema->pretty_print, "\n";
+print My::SM::Triple->new->sm_schema->pretty_print, "\n";
                                      # Output state diagram
                                      # Rather clumsy one though
 

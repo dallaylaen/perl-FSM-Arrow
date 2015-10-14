@@ -161,9 +161,8 @@ use lib "$Bin/../lib";
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
 	sm_transition bye  => 'online',  handler => sub { "Hangup" };
 
-	# Self check state definitions
-	my $bad = __PACKAGE__->new->schema->validate();
-	die "VIOLATIONS" . Data::Dumper::Dumper($bad) if $bad;
+	# Self check state definitions for correctness
+	sm_validate;
 
 	# Simplify sending events to peer.
 	sub mk_event {

@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0607;
+our $VERSION = 0.0608;
 
 =head1 DESCRIPTION
 
@@ -77,7 +77,7 @@ which will switch machine's state and return arbitrary data.
 	$sm->handle_event( "baz" ); # returns undef, state = final
 
 	$sm->isa("FSM::Arrow::Instance"); # true
-	$sm->schema; # returns a FSM::Arrow object
+	$sm->sm_schema; # returns a FSM::Arrow object
 
 =head1 USAGE
 
@@ -94,7 +94,7 @@ On the first usage of either, the following happens:
 
 =item * The calling package becomes descendant of FSM::Arrow::Instance;
 
-=item * The calling package gets C<schema> method which returns
+=item * The calling package gets C<sm_schema> method which returns
 a FSM::Arrow object;
 
 =item * The calling package inherits C<state> and C<new> methods
@@ -142,7 +142,7 @@ if ($can_xs) {
 
 =head3 sm_init %options
 
-Initialize state machine schema with %options. See new() below.
+Initialize state machine sm_schema with %options. See new() below.
 This call may be omitted, unless options are really needed.
 
 options may include:
@@ -216,14 +216,14 @@ sub sm_init (@) { ## no critic (ProhibitSubroutinePrototypes)
 
 	my $caller = caller;
 
-	croak "sm_init: FATAL: SM schema already initialized"
+	croak "sm_init: FATAL: SM sm_schema already initialized"
 		if exists $sm_schema{$caller};
 
 	my %args = @_;
 	if ($args{parent} && !ref $args{parent}) {
 		my $parent = $args{parent};
 
-		# try loading parent if schema not present
+		# try loading parent if sm_schema not present
 		if (!exists $sm_schema{$parent}) {
 			my $file = $parent;
 			$file =~ s{::}{/}gxs;
@@ -341,8 +341,8 @@ sub sm_state ($@) { ## no critic (ProhibitSubroutinePrototypes)
 
 	my $caller = caller;
 
-	my $schema = __PACKAGE__->_sm_init_schema($caller);
-	return $schema->add_state( $name => $handler, @_ );
+	my $sm_schema = __PACKAGE__->_sm_init_schema($caller);
+	return $sm_schema->add_state( $name => $handler, @_ );
 };
 
 =head3 sm_transition 'event_type' => 'new_state', %options;
@@ -394,11 +394,11 @@ sub sm_transition($$@) { ## no critic (ProhibitSubroutinePrototypes)
 	my ($types, $new_state, @options) = @_;
 	my $caller = caller;
 
-	my $schema = __PACKAGE__->_sm_init_schema($caller);
-	my $old_state = $schema->last_added_state;
+	my $sm_schema = __PACKAGE__->_sm_init_schema($caller);
+	my $old_state = $sm_schema->last_added_state;
 	croak "sm_transition: FATAL: no states added yet"
 		unless $old_state;
-	return $schema->add_transition(
+	return $sm_schema->add_transition(
 		$old_state => $new_state, event => $types, @options );
 };
 
@@ -424,10 +424,10 @@ The following checks exist for now:
 
 sub sm_validate (;$) { ## no critic (ProhibitSubroutinePrototypes)
 	my $caller = shift || caller;
-	my $sm = ref $caller ? $caller->schema : $caller->get_default_sm;
+	my $sm = ref $caller ? $caller->sm_schema : $caller->get_default_sm;
 
 	croak __PACKAGE__."->validate called by ".(ref $caller || $caller)
-		.", but no SM schema could be found"
+		.", but no SM sm_schema could be found"
 			unless $sm;
 
 	my $bad = $sm->validate;
@@ -462,13 +462,13 @@ MUST exhibit the following properties for the machine to work correctly.
 C<$instance> must be a descendant of L<FSM::Arrow::Instance> class.
 This is enforced by the first use of sm_init or sm_state.
 
-C<$instance-\>schema()> getter method must be present.
+C<$instance-\>sm_schema()> getter method must be present.
 Its return value must be the same C<FSM::Arrow> object
 throughout the instance lifetime.
 
 C<$instance-\>state( [new_value] )> accessor method must be present.
 
-Constructor must set both state and schema.
+Constructor must set both state and sm_schema.
 
 $instance->handle_event($event) method must be left intact, or call
 C<$instance-\>scheme-\>handle_event($instance, $event)>
@@ -482,7 +482,7 @@ C<is_final>, C<accepting>, C<get_initial_state>.
 
 Additionally, if OO interface's method spawn() is in use (see below),
 the constructor must be named C<new()>, and must accept at least
-C<new(schema =\> $object)> parameters.
+C<new(sm_schema =\> $object)> parameters.
 
 If FSM::Arrow::Instance constructor is used, no additional action is required.
 
@@ -503,6 +503,7 @@ Declarative interface is actually syntactic sugar over this one.
 The state machine is separated into
 B<schema> which carries state definitions and metadata
 and B<instance> which stores schema reference and the current state.
+This may be referred to as I<Strategy> pattern.
 
 A custom instance class may be defined,
 provided that it follows CONTRACT (see above).
@@ -511,12 +512,12 @@ provided that it follows CONTRACT (see above).
 
     use FSM::Arrow;
 
-    my $schema = FSM::Arrow->new( instance_class => 'My::Context' );
-	$schema->add_state( "name" => sub { ... }, next => [ 'more', 'states' ] );
+    my $sm_schema = FSM::Arrow->new( instance_class => 'My::Context' );
+	$sm_schema->add_state( "name" => sub { ... }, next => [ 'more', 'states' ] );
 	# ... more or the same
 
 	# much later
-	my $instance = $schema->spawn;
+	my $instance = $sm_schema->spawn;
 	while (<>) {
 		my $reply = $instance->handle_event($_);
 		print "$reply\n";
@@ -586,7 +587,8 @@ sub new {
 
 Create a copy of SM schema object.
 
-Cloned state handlers can then be overridden by add_state.
+Cloned state handlers can then be overridden by add_state,
+but only once per state.
 
 Options are the same as for new(), except for parent which is forbidden.
 
@@ -789,14 +791,14 @@ sub _array_to_hash {
 
 Returns a new machine instance.
 
-state() is set to initial_state. schema() is set to self.
+state() is set to initial_state. sm_schema() is set to self.
 
 =cut
 
 sub spawn {
 	my $self = shift;
 
-	my $instance = $self->{instance_class}->new( schema => $self );
+	my $instance = $self->instance_class->new( sm_schema => $self );
 	return $instance;
 };
 
@@ -1058,13 +1060,13 @@ sub instance_class {
 
 =head3 is_final( $state_name )
 
-Tells whether $state_name is a final state in the current schema.
+Tells whether $state_name is a final state in the machine.
 
 B<NOTE> Invalid states are ignored, i.e. no exception.
 This may change in the future.
 
 B<NOTE> This method is normally not called directly -
-call $instance->is_final() instead.
+call C<$instance-\>is_final()> instead.
 
 =cut
 
@@ -1108,10 +1110,10 @@ my $id;
 sub generate_id {
 	my $self = shift;
 
-	my $schema = ref $self;
-	my $instance = $self->{instance_class};
+	my $type = ref $self;
+	my $instance = $self->instance_class;
 
-	return "$schema<$instance>#".++$id;
+	return "$type<$instance>#".++$id;
 };
 
 =head3 last_added_state()

@@ -6,7 +6,7 @@ use Test::More;
 
 my $sm2 = My::SM::Child->new;
 
-note "id = ", $sm2->schema->id;
+note "id = ", $sm2->sm_schema->id;
 
 is ($sm2->state, "initial", "initial state");
 

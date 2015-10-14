@@ -17,9 +17,9 @@ provided that the following contract is held:
 
 =over
 
-=item * new() accepts a C<schema => $scalar> parameter;
+=item * new() accepts a C<sm_schema => $scalar> parameter;
 
-=item * schema() ALWAYS returns that $scalar after that;
+=item * sm_schema() ALWAYS returns that $scalar after that;
 
 =item * state() is present and ALWAYS returns
 whatever was given to it last time;
@@ -37,14 +37,14 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 =cut
 
 ## no critic (RequireArgUnpacking)
-our $VERSION = 0.0602;
+our $VERSION = 0.0603;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
 use Carp;
 our @CARP_NOT = qw(FSM::Arrow);
 
-use fields qw(state schema sm_queue);
+use fields qw(state sm_schema sm_queue);
 
 # Use XS Accessors if available, for speed & glory
 # Normal accessors are still present and work the same (but slower).
@@ -52,7 +52,7 @@ my $can_xs = !$ENV{FSM_ARROW_NOXS} && eval { require Class::XSAccessor; 1 };
 if ($can_xs) {
 	Class::XSAccessor->import(
 		replace => 1,
-		getters => { schema => 'schema' },
+		getters => { sm_schema => 'sm_schema' },
 		accessors => { state => 'state', sm_queue => 'sm_queue' },
 	);
 };
@@ -63,7 +63,7 @@ if ($can_xs) {
 
 =over
 
-=item * schema - a FSM::Arrow object that holds the state metadata;
+=item * sm_schema - a FSM::Arrow object that holds the state metadata;
 
 =item * state - the initial state name;
 
@@ -81,8 +81,8 @@ sub new {
 		if @_ % 2;
 
 	my %args = @_;
-	$args{schema} ||= $class->get_default_sm;
-	$args{state}  ||= $args{schema} && $args{schema}->initial_state;
+	$args{sm_schema} ||= $class->get_default_sm;
+	$args{state}  ||= $args{sm_schema} && $args{sm_schema}->initial_state;
 	return bless \%args, $class;
 };
 
@@ -99,7 +99,7 @@ B<NOTE> The state MAY be changed after this call.
 sub handle_event {
 	# Delegate the hard work to FSM::Arrow
 	# so that all concerted code modifications are local to that file.
-	return $_[0]->schema->handle_event(@_);
+	return $_[0]->sm_schema->handle_event(@_);
 };
 
 =head2 state()
@@ -151,7 +151,7 @@ Tells whether current state is final.
 
 sub is_final {
 	my $self = shift;
-	return $self->schema->is_final( $self->state );
+	return $self->sm_schema->is_final( $self->state );
 };
 
 =head2 accepting()
@@ -164,17 +164,17 @@ See C<accepting> parameter in sm_state.
 
 sub accepting {
 	my $self = shift;
-	return $self->schema->accepting( $self->state );
+	return $self->sm_schema->accepting( $self->state );
 };
 
-=head2 schema()
+=head2 sm_schema()
 
-Returns state machine schema.
+Returns state machine shared metadata.
 
 =cut
 
-sub schema {
-	return $_[0]->{schema};
+sub sm_schema {
+	return $_[0]->{sm_schema};
 };
 
 =head2 EXTENDING
@@ -204,15 +204,15 @@ If you use fields:
 		$self->sm_on_construction;
     }
 
-B<NOTE> This sub sets C<$self-\>{schema}> directly.
+B<NOTE> This sub sets C<$self-\>{sm_schema}> directly.
 This may change in the future.
-However, getting schema and getting/setting state are done via accessors,
+However, getting sm_schema and getting/setting state are done via accessors,
 and this is going to stay.
 
 =head3 sm_on_construction
 
 Receives no arguments.
-Sets schema and state, if possible.
+Sets sm_schema and state, if possible.
 Returns self.
 
 =cut
@@ -220,13 +220,13 @@ Returns self.
 sub sm_on_construction {
 	my $self = shift;
 
-	my $schema; # some caching for the sake of premature optimisation
-	if (!($schema = $self->schema)) {
-		$schema = $self->get_default_sm;
-		$self->{schema} = $schema; # schema is a r/o accessor, so do like this
+	my $sm_schema; # some caching for the sake of premature optimisation
+	if (!($sm_schema = $self->sm_schema)) {
+		$sm_schema = $self->get_default_sm;
+		$self->{sm_schema} = $sm_schema; # sm_schema is a r/o accessor, so do like this
 	};
-	if ($schema && !$self->state) {
-		$self->state( $schema->initial_state );
+	if ($sm_schema && !$self->state) {
+		$self->state( $sm_schema->initial_state );
 	};
 
 	return $self;
@@ -241,7 +241,7 @@ Dies unless declarative interface was indeed used.
 =cut
 
 sub get_default_sm {
-	croak "FSM::Arrow::Instance: 'schema' argument missing in constructor"
+	croak "FSM::Arrow::Instance: 'sm_schema' argument missing in constructor"
 		." and declarative API not in use";
 };
 

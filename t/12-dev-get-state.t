@@ -14,7 +14,7 @@ use Test::More;
 		final => 1, accepting => "ok";
 };
 
-my $sm = My::SM->new->schema;
+my $sm = My::SM->new->sm_schema;
 
 is_deeply ( [ sort $sm->list_states ], [ qw(end start) ], "list_states" );
 is ([$sm->list_states]->[0], "start", "initial state comes first");

@@ -21,7 +21,7 @@ use Test::More;
 	# and change nothing ;)
 };
 
-my $sm = My::SM2->new->schema;
+my $sm = My::SM2->new->sm_schema;
 
 is_deeply( [ $sm->list_states ], [ "one", "two" ], "States ok");
 

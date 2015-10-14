@@ -11,7 +11,7 @@ BEGIN { $ENV{FSM_ARROW_NOXS} = 1 };
 my $sm = My::Machine->new;
 
 is ($sm->state, 'initial', "initial state holds");
-is (ref $sm->schema, 'FSM::Arrow', "Schema ref correct");
+is (ref $sm->sm_schema, 'FSM::Arrow', "Schema ref correct");
 
 my $ret = $sm->handle_event("don't go");
 is ($ret, undef, "non mathing event => no retval");

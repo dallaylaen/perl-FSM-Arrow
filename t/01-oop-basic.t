@@ -6,16 +6,16 @@ use Test::More;
 
 use FSM::Arrow;
 
-my $schema = FSM::Arrow->new;
-$schema->add_state( empty => sub {
+my $sm_schema = FSM::Arrow->new;
+$sm_schema->add_state( empty => sub {
 	return ("first", $1) if $_[1] =~ /foo(.*)/ } );
-$schema->add_state( first => sub {
+$sm_schema->add_state( first => sub {
 	return ("second", $1) if $_[1] =~ /bar(.*)/ } );
-$schema->add_state( second => sub {} );
+$sm_schema->add_state( second => sub {} );
 
-my $machine = $schema->spawn;
+my $machine = $sm_schema->spawn;
 
-like ( $schema->id, qr(FSM::Arrow), "id present");
+like ( $sm_schema->id, qr(FSM::Arrow), "id present");
 
 is( ref $machine, 'FSM::Arrow::Instance', "Machine instance spawn ok");
 is( $machine->state, 'empty', "first state = initial state");

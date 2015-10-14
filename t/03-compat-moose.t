@@ -39,12 +39,12 @@ BEGIN {
 	use Moose;
 	use FSM::Arrow qw(:class);
 
-	has schema => is => "ro",
+	has sm_schema => is => "ro",
 		default => sub { $_[0]->get_default_sm };
 	has state => is => "rw";
 	sub BUILD {
 		my $self = shift;
-		$self->state( $self->schema->initial_state )
+		$self->state( $self->sm_schema->initial_state )
 			unless $self->state;
 	};
 
@@ -56,7 +56,7 @@ note "First SM";
 my $sm = My::SM::Simple->new;
 
 is ($sm->state, 'initial', "initial state holds");
-is (ref $sm->schema, 'FSM::Arrow', "Schema ref correct");
+is (ref $sm->sm_schema, 'FSM::Arrow', "Schema ref correct");
 
 my $ret = $sm->handle_event("don't go");
 is ($ret, undef, "non mathing event => no retval");

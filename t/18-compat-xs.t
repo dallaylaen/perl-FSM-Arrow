@@ -15,7 +15,7 @@ BEGIN {
 	package My::SM;
 	use FSM::Arrow qw(:class);
 	use Class::XSAccessor
-		getters => { schema => "schema" },
+		getters => { sm_schema => "sm_schema" },
 		accessors => { state => "state" },
 	;
 
