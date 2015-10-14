@@ -1,7 +1,7 @@
+package FSM::Arrow::Util;
+
 use strict;
 use warnings;
-
-package FSM::Arrow::Util;
 
 =head1 NAME
 
@@ -9,13 +9,13 @@ FSM::Arrow::Util - Various subroutine generators for FSM::Arrow.
 
 =head1 DESCRIPTION
 
-L<FSM::Arrow> makes heavi use of callbacks.
+L<FSM::Arrow> makes heavy use of callbacks.
 However, many of those callbacks repeat the same patterns over and over again.
 This package contains subroutine generators for some of such cases.
 
 =cut
 
-our $VERSION = 0.0602;
+our $VERSION = 0.0603;
 
 use Exporter;
 
@@ -30,7 +30,10 @@ use FSM::Arrow::Event;
 
 =head1 SUBROUTINES
 
-All of these subroutines are exported.
+All of the following subroutines are exported, but none by default.
+
+All subroutines defined in this module start with C<sm_> prefix.
+They are guaranteed not to intersect with other L<FSM::Arrow>'s modules.
 
 B<NOTE> This module is subject to rapid change.
 
