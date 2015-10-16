@@ -28,6 +28,10 @@ FAR WISHLIST (past version, change that was suggested during that version)
 0.06	DEV Add typed transitions to pretty-print
 0.06	API rename Instance methods (handle_event, is_final, accepting) to sm_*
 0.06	DOC More concrete README.md
+0.07	API Determine if there are more events to come (sm_pending? has_queue?)
+0.07	API Debugging primitives for showing "stack trace":
+		event(type, ...); machine (schema, state, ...); stack of all machines
+		in use at given moment
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?

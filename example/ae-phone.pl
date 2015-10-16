@@ -62,8 +62,15 @@ use lib "$Bin/../lib";
 	use FSM::Arrow qw(:class);
 	use FSM::Arrow::Util qw(:all);
 
-	use Class::XSAccessor accessors => {
-		number => 'number', call => 'call', fh => 'fh' };
+	use Class::XSAccessor
+		accessors => { number => 'number', call => 'call', fh => 'fh' }
+		, getters => { id => 'id' };
+
+	my $id;
+	sub new {
+		my $class = shift;
+		return $class->SUPER::new( @_, id => ++$id );
+	};
 
 	sm_init strict => 1,
 		on_event => sm_on_event_regex (
@@ -72,16 +79,15 @@ use lib "$Bin/../lib";
 			undef => 'part',
 		),
 		on_state_change => sub {
-			print "#     SM ". ($_[0]->number // '[offline]')
-				. " $_[1] => $_[2] via '$_'; q=[@{$_[0]->sm_queue}]\n";
+			$_[0]->reply("# state $_[1] => $_[2]");
 		},
 		on_return => sub {
 			my $self = shift;
-			$self->reply( "OK: ", shift // '(silent)' );
+			$self->reply( "# OK: @", $self->state, ' ', shift // '(silent)' );
 		},
 		on_error => sub {
 			my $self = shift;
-			$self->reply( "ERROR: ", $@ );
+			$self->reply( "# ERROR: @", $self->state, ' ', $@ );
 		};
 	# events so far: join <number>, part;
 
@@ -92,6 +98,7 @@ use lib "$Bin/../lib";
 			$call->handle_event( $self->mk_event("bye") );
 		};
 		$self->call( undef );
+		$self->reply ( "!offline" );
 	};
 	sm_transition join => 'online', handler => sub {
 		my $self = shift;
@@ -104,10 +111,11 @@ use lib "$Bin/../lib";
 
 	sm_state 'online', on_enter => sub {
 		my $self = shift;
-		if (my $call = $self->call) {
+		if (my $call = $self->call and !$_->is_mt) {
 			$call->handle_event( $self->mk_event("bye") );
 		};
 		$self->call( undef );
+		$self->reply( "!online ", $self->number );
 	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
 	sm_transition dial => 'calling', handler => sub {
@@ -125,9 +133,8 @@ use lib "$Bin/../lib";
 	sm_transition ring => 'ringing', handler => sub {
 		my $self = shift;
 		$self->call( $_->peer );
-		"Incoming call from ".$_->number.", accept?(y/n)";
+		return;
 	};
-	sm_transition bye => 'online';
 
 	sm_state 'calling';
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
@@ -139,7 +146,9 @@ use lib "$Bin/../lib";
 		$peer and $peer->handle_event( $self->mk_event( "bye" ) );
 	};
 
-	sm_state 'ringing';
+	sm_state 'ringing', on_enter => sub {
+		$_[0]->reply( "!ringing ", $_->number, ", accept? (y/n)" );
+	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
 	sm_transition n    => 'online',  handler => sub {
 		my $self = shift;
@@ -154,8 +163,7 @@ use lib "$Bin/../lib";
 	};
 
 	sm_state 'busy', on_enter => sub {
-		my $self = shift;
-		$self->reply( "Talking to ".$self->call->number."..." );
+		$_[0]->reply( "!busy ", $_[0]->call ? $_[0]->call->number : "(...)");
 	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
 	sm_transition bye  => 'online',  handler => sub { "Hangup" };
@@ -201,14 +209,16 @@ use lib "$Bin/../lib";
 
 		eval { $self->handle_event($raw) }
 			if !defined $raw or $raw =~ /\S/;
-		$self->reply( ">> ", "number=", $self->number || 'off'
-			, ", state=", $self->state
-			, ($self->call ? ", call=". $self->call->number : ()));
+
+		# This is for scriptability. If command failed, reset state
+		# on_return/on_error are to handle return values & $@ output
+		$self->reply( '!', $self->state )
+			if ($@);
 	};
 
 	sub reply {
 		my $self = shift;
-		my $msg = join "", @_;
+		my $msg = join "", map { $_ // '(undef)' } @_;
 		$msg =~ s/\s*$/\n/s;
 
 		if ($self->fh) {
@@ -265,10 +275,10 @@ my $listen = tcp_server undef, $port, sub {
 		},
 	);
 	$machine->fh( $handle );
+	# HACK initiate offline => offline trans.
+	$machine->handle_event("bye");
 	# NOTE machine and handle create a loop.
 	# So need we to undef carefully to avoid leaks.
-
-	print "#    Peer joined($handle): $host:$port";
 };
 
 # Enter main loop...

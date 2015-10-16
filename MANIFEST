@@ -53,3 +53,4 @@ t/28-oop-validate.t
 example/ae-phone.pl
 t/29-decl-reentrable.t
 t/29-decl-reentrable.t
+example/ae-client-phone.pl
