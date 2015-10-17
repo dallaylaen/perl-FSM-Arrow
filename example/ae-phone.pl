@@ -87,11 +87,12 @@ use lib "$Bin/../lib";
 		},
 		on_error => sub {
 			my $self = shift;
+			warn "Error in handler: $@";
 			$self->reply( "# ERROR: @", $self->state, ' ', $@ );
 		};
 	# events so far: join <number>, part;
 
-	sm_state 'offline', on_enter => sub {
+	sm_state 'offline' => \&on_wrong_event, on_enter => sub {
 		my $self = shift;
 		$self->sign_off;
 		if (my $call = $self->call) {
@@ -109,7 +110,7 @@ use lib "$Bin/../lib";
 	};
 	sm_transition bye => 'offline';
 
-	sm_state 'online', on_enter => sub {
+	sm_state 'online' => \&on_wrong_event, on_enter => sub {
 		my $self = shift;
 		if (my $call = $self->call and !$_->is_mt) {
 			$call->handle_event( $self->mk_event("bye") );
@@ -122,9 +123,11 @@ use lib "$Bin/../lib";
 		my $self = shift;
 		die "dial requires number" unless $_->number;
 
-		my $peer = $self->get_user( $_->number );
-		die "No such user " . $_->number
-			unless $peer;
+		my $peer = $_->peer;
+		if (!$peer) {
+			$self->handle_event("n");
+			return;
+		};
 
 		$self->call( $peer );
 		$self->call->handle_event( $self->mk_event("ring") );
@@ -136,17 +139,16 @@ use lib "$Bin/../lib";
 		return;
 	};
 
-	sm_state 'calling';
+	sm_state 'calling' => \&on_wrong_event;
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
-	sm_transition y    => 'busy';
+	sm_transition y    => 'busy',    handler => sub { $_->is_mt or die "Cannot self-accept" };
 	sm_transition bye  => 'online',  handler => sub { "Call rejected" };
-	sm_transition ring => 'calling', handler => sub {
+	sm_transition ring => 0, handler => sub {
 		my $self = shift;
-		my $peer = $self->get_user( $_->number );
-		$peer and $peer->handle_event( $self->mk_event( "bye" ) );
+		$_->peer and $_->peer->handle_event( $self->mk_event( "bye" ) );
 	};
 
-	sm_state 'ringing', on_enter => sub {
+	sm_state 'ringing' => \&on_wrong_event, on_enter => sub {
 		$_[0]->reply( "!ringing ", $_->number, ", accept? (y/n)" );
 	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
@@ -161,12 +163,20 @@ use lib "$Bin/../lib";
 		$self->call->handle_event( $self->mk_event( "y" ) );
 		return;
 	};
+	sm_transition ring => 0,         handler => sub {
+		my $self = shift;
+		$_->peer and $_->peer->handle_event( $self->mk_event("n") );
+	};
 
-	sm_state 'busy', on_enter => sub {
+	sm_state 'busy' => \&on_wrong_event, on_enter => sub {
 		$_[0]->reply( "!busy ", $_[0]->call ? $_[0]->call->number : "(...)");
 	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
 	sm_transition bye  => 'online',  handler => sub { "Hangup" };
+	sm_transition ring => 0,         handler => sub {
+		my $self = shift;
+		$_->peer and $_->peer->handle_event( $self->mk_event("n") );
+	};
 
 	# Self check state definitions for correctness
 	sm_validate;
@@ -176,6 +186,19 @@ use lib "$Bin/../lib";
 		my ($self, $type) = @_;
 		return My::Event->new(
 			type => $type, number => $self->number, is_mt => 1 );
+	};
+
+	sub on_wrong_event {
+		my ($self, $event) = @_;
+
+		my $msg = "Inappropriate event in state ".$self->state.": ".$event;
+		if (!$event->is_mt) {
+			$self->reply($msg);
+			$self->reply("!".$self->state);
+			return;
+		} else {
+			die $msg;
+		};
 	};
 
 	# Some primitive data storage. Imagine a DB here!
@@ -269,6 +292,7 @@ my $listen = tcp_server undef, $port, sub {
 		},
 		on_error => sub {
 			# Avoid one SIGPIPE taking the server down
+			warn "SOCKET ERROR: fatal=$_[1]: $_[2]";
 			$machine->fh( undef );
 			$machine->on_input(undef);
 			$machine = undef;
