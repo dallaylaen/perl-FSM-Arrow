@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.07;
+our $VERSION = 0.0701;
 
 =head1 DESCRIPTION
 
@@ -359,8 +359,8 @@ if needed.
 'event_type' must be a string or array of strings.
 Unlike for states, empty and 0 are allowed.
 
-'new_state' must be a true string, and should be defined as a state
-at some point, maybe later.
+'new_state' must be either a (possibly future) state name, or false.
+False value means that transition is looped, and callbacks are ignored.
 
 Options may include:
 
@@ -756,8 +756,8 @@ sub add_transition {
 		if @extra;
 	$self->_croak( "add_transition: old_state must be a true string" )
 		if !$from || ref $from;
-	$self->_croak( "add_transition: new_state must be a true string" )
-		if !$to || ref $to;
+	$self->_croak( "add_transition: new_state must be a string" )
+		if !defined $to || ref $to;
 
 	my $events = $args{event};
 	$events = [] unless defined $events;
@@ -767,7 +767,7 @@ sub add_transition {
 	$self->_croak( "add_transition: non-looped transition from final state" )
 		if $state->{final} and $from ne $to;
 
-	$state->{next} and $state->{next}{$to} = 1;
+	$state->{next} and $to and $state->{next}{$to} = 1;
 
 	$state->{event_types}{$_} = $to for @$events;
 
@@ -861,7 +861,7 @@ sub handle_event {
 
 			# Determine next state:
 			if ( defined $ev_type
-				and $new_state = $rules->{event_types}{ $ev_type }
+				and defined ($new_state = $rules->{event_types}{ $ev_type })
 			) {
 				# if typed event is used, try hard transition (type-based)
 				my $handler = $rules->{event_handler}{ $ev_type };

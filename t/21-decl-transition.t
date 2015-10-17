@@ -115,6 +115,31 @@ is_deeply( $clone, $orig, "Clone still works" )
 		diag "new sm_schema = ", explain $clone;
 	};
 
+my @follow;
+{
+	package My::SM::Notransition;
+	use FSM::Arrow qw(:class);
+	sm_init strict => 1;
+
+	sm_state 'one_and_only'
+		, on_enter => sub { die "No state change allowed" };
+	sm_transition 1 => 0, handler => sub {
+		push @follow, $_;
+	};
+	sm_transition 2 => 'one_and_only';
+
+	sm_validate;
+};
+
+$sm = My::SM::Notransition->new;
+eval { $sm->handle_event( make_event( 2 ) ) };
+like $@, qr(No.*allowed), "No real transition";
+
+# 0 returned, so on_enter was NOT followed
+eval { $sm->handle_event( make_event( 1 ) ) };
+is ($@, '', "Empty transition ok" );
+is_deeply ( \@follow, [ make_event(1) ], "handler cb worked" );
+
 done_testing;
 
 sub make_event {
