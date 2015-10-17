@@ -1,37 +1,46 @@
 ROADMAP (future version, change required for that version)
 
 WISHLIST (past version, change that was suggested during that version)
-0.03	TST ad-hoc parser example (aka ini file)
-0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
-0.04	TST Expect example (run external program, control execution flow,
-		enter passwd)
-0.06	DOC explain reenterability
+* UP NEXT
 0.06	TST ae-phone client & benchmark. (A sm example itself!)
 
-FAR WISHLIST (past version, change that was suggested during that version)
-0.03 	TST push-down parser example (JSON?)
-0.03	DOC More rationale & basic SM discussion (?)
-0.03	DEV state graph object, stringify
-0.03	DEV per machine stats (now many in which state) (do we need it? )
+* MODULES HIGH
+0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
 0.03	API state redefine properties w/o changing sub ( keep => 1 )
-0.03	TST Add distributed connected machines example.
-0.03	TST Add improved PSGI example to show inheritance power.
-0.04	TST nested machine example - low-level machine assembling events
-		for high-level one
-0.04	TST inherited machine example
+0.03	DOC More rationale & basic SM discussion (?)
 0.05	API sm_transition locking (like states) & uniqueness check
-0.05	API FSM::Arrow::Builder - construct machine state-by-state.
-0.06	API ret val available in cb (local $FSM::Arrow::ret?)
+0.06	DOC explain reenterability
 0.06	API strict vs inheritance -rule out
 0.06	API sm_transition_from (name?) - add transition to non-current state
 0.06	API stateless events - don't depend on state, don't trigger state change
-0.06	DEV Add typed transitions to pretty-print
-0.06	API rename Instance methods (handle_event, is_final, accepting) to sm_*
-0.06	DOC More concrete README.md
 0.07	API Determine if there are more events to come (sm_pending? has_queue?)
-0.07	API Debugging primitives for showing "stack trace":
+0.07	DEV Debugging primitives for showing "stack trace":
 		event(type, ...); machine (schema, state, ...); stack of all machines
 		in use at given moment
+0.07	API Don't rethrow after on_error
+
+* MODULES LOW
+0.03	DEV per machine stats (now many in which state) (do we need it? )
+0.03	DEV state graph object, stringify
+0.05	API FSM::Arrow::Builder - construct machine state-by-state.
+0.06	API ret val available in cb (local $FSM::Arrow::ret?)
+0.06	API rename Instance methods (handle_event, is_final, accepting) to sm_*
+0.06	DEV Add typed transitions to pretty-print
+0.07	API sm_init engine => [ Moose|Class::StateMachine|fields|none|auto ]
+
+* EXAMPLES
+0.03	TST ad-hoc parser example (aka ini file)
+0.03 	TST push-down parser example (JSON?)
+0.03	TST Add distributed connected machines example.
+0.03	TST Add improved PSGI example to show inheritance power.
+0.04	TST Expect example (run external program, control execution flow,
+		enter passwd)
+0.04	TST nested machine example - low-level machine assembling events
+		for high-level one
+0.04	TST inherited machine example
+
+* MISC
+0.06	DOC More concrete README.md
 
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?
