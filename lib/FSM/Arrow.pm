@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0701;
+our $VERSION = 0.0702;
 
 =head1 DESCRIPTION
 
@@ -754,10 +754,16 @@ sub add_transition {
 	my @extra = grep { !$trans_args{$_} } keys %args;
 	$self->_croak( "add_transition: unexpected arguments @extra" )
 		if @extra;
+	foreach (qw(handler on_follow)) {
+		$self->_croak( "add_transition: $_ must be a sub" )
+			unless _is_sub( $args{$_} );
+	};
 	$self->_croak( "add_transition: old_state must be a true string" )
 		if !$from || ref $from;
 	$self->_croak( "add_transition: new_state must be a string" )
 		if !defined $to || ref $to;
+	$self->_croak( "add_transition: on_follow disallowed for empty new_state" )
+		if !$to && $args{on_follow};
 
 	my $events = $args{event};
 	$events = [] unless defined $events;
@@ -765,7 +771,7 @@ sub add_transition {
 
 	my $state = $self->{states}{$from};
 	$self->_croak( "add_transition: non-looped transition from final state" )
-		if $state->{final} and $from ne $to;
+		if $state->{final} && $to && $to ne $from;
 
 	$state->{next} and $to and $state->{next}{$to} = 1;
 
