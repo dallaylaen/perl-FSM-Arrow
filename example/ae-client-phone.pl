@@ -1,5 +1,10 @@
 #!/usr/bin/env perl
 
+# Phone call simulator stress test client.
+# Run as: ae-client-phone.pl <port> <number> <number> ...
+# The numbers will then connect to a ae-phone.pl running on port <port>
+# and spam it with a lot of requests.
+
 use strict;
 use warnings;
 use AnyEvent::Strict;
@@ -13,6 +18,9 @@ my $DEBUG = 0;
 my $VERBOSE = 1;
 my $counter = 0;
 
+# State machine definition here
+# Now we only have one state here and should probably NOT use FSM::Arrow at all
+# but one-state SM also should be shown...
 {
 	package My::Phone;
 	use FSM::Arrow qw(:class);
@@ -73,6 +81,7 @@ my $counter = 0;
 		$users{ $opt{number} } = $class->SUPER::new(%opt);
 	};
 }
+# State machine definition ends here
 
 my ($port, @num) = @ARGV;
 if (!$port) {
@@ -82,6 +91,7 @@ if (!$port) {
 my %uniq;
 @num = grep { !$uniq{$_}++ } @num;
 
+# Set up fixed n of machines...
 foreach (@num) {
 	my $machine = My::Phone->new(number => $_);
 	my $reset_timer;
@@ -125,7 +135,4 @@ $SIG{INT} = sub {
 $cv->recv;
 
 print "Total: $counter\n";
-
-
-
 
