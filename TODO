@@ -2,10 +2,8 @@ ROADMAP (future version, change required for that version)
 
 WISHLIST (past version, change that was suggested during that version)
 * UP NEXT
-0.06	TST ae-phone client & benchmark. (A sm example itself!)
 
 * MODULES HIGH
-0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
 0.03	API state redefine properties w/o changing sub ( keep => 1 )
 0.03	DOC More rationale & basic SM discussion (?)
 0.05	API sm_transition locking (like states) & uniqueness check
@@ -20,6 +18,7 @@ WISHLIST (past version, change that was suggested during that version)
 0.07	API Don't rethrow after on_error
 
 * MODULES LOW
+0.03	DEV test_contract( $class ) - check that $class is ready for SM usage
 0.03	DEV per machine stats (now many in which state) (do we need it? )
 0.03	DEV state graph object, stringify
 0.05	API FSM::Arrow::Builder - construct machine state-by-state.
@@ -27,6 +26,9 @@ WISHLIST (past version, change that was suggested during that version)
 0.06	API rename Instance methods (handle_event, is_final, accepting) to sm_*
 0.06	DEV Add typed transitions to pretty-print
 0.07	API sm_init engine => [ Moose|Class::StateMachine|fields|none|auto ]
+0.07	API Short circuit transitions ( via unshift sm_queue )
+0.07	API State machine instance id (sm_id?)
+0.07	API State machine instance and event to_string & "" overload
 
 * EXAMPLES
 0.03	TST ad-hoc parser example (aka ini file)
@@ -45,8 +47,6 @@ WISHLIST (past version, change that was suggested during that version)
 DISCUSSION ITEMS
 0.02	Extract FSM::Arrow::Schema?
 0.03	Extract State object? (Will kill perf)
-0.03	Short-circuit transitions? 
-		(i.e. next state gets the same event immediately)
 0.03	All-state transitions? (e.g. disconnect on a phone call)
 0.03	Chained handlers? (i.e. handler1 returned nothing => check 2 & so on)
 0.03	Deferred events (cannot handle right now, but will be able to later)
