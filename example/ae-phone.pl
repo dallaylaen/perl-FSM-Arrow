@@ -36,7 +36,7 @@ use AnyEvent::Handle;
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-# State machine definitions
+# State machine definitions - this would be a couple .pm files in real life
 {
 	# We'll use custom event class, very stupid but somewhat helpful.
 	package My::Event;
@@ -62,6 +62,7 @@ use lib "$Bin/../lib";
 	use FSM::Arrow qw(:class);
 	use FSM::Arrow::Util qw(:all);
 
+	# Set up some accessors here...
 	use Class::XSAccessor
 		accessors => { number => 'number', peer => 'peer', fh => 'fh' }
 		, getters => { id => 'id' };
@@ -72,6 +73,7 @@ use lib "$Bin/../lib";
 		return $class->SUPER::new( @_, id => ++$id );
 	};
 
+	# Start out a machine first, note a lot of callbacks
 	sm_init strict => 1,
 		on_event => sm_on_event_regex (
 			class => "My::Event",
@@ -92,6 +94,11 @@ use lib "$Bin/../lib";
 			$self->reply( "# ERROR: @", $self->state, ' ', $err );
 		};
 
+	# First state = offline
+	# Note: we prefix mt events with mt_
+	# The handler sub (on_wrong_event) should NOT be reached here,
+	# but some nice error messages are better than default `croak`
+	# which will be used if event handler is omitted
 	sm_state 'offline' => \&on_wrong_event, on_enter => sub {
 		my $self = shift;
 		$self->sign_off;
@@ -107,8 +114,10 @@ use lib "$Bin/../lib";
 		$self->sign_on($_->number);
 		"Joined as ".$self->number;
 	};
-	sm_transition mt_bye => 0;
+	sm_transition mt_bye => 0; # transition => 0 == silently skip this event
 
+	# The second state. Entering online state may mean termination of a call,
+	# so if we're talking to someone (peer) let them know we're off the line
 	sm_state 'online' => \&on_wrong_event, on_enter => sub {
 		my $self = shift;
 		$self->notify_peer( "bye" ) unless $_->is_mt;
@@ -120,6 +129,11 @@ use lib "$Bin/../lib";
 		my $self = shift;
 		die "dial requires number" unless $_->number;
 
+		# If no peer found, say goodbye to ourselves
+		# NOTE This is a short-circuit transition in fact:
+		# switch state, process event leading from that state immediately
+		# This may be used if one wants hard transition, BUT
+		# extra check is required within transition handler.
 		my $peer = $_->peer;
 		if (!$peer) {
 			$self->handle_event(
@@ -202,6 +216,9 @@ use lib "$Bin/../lib";
 			$self->reply("!".$self->state);
 			return;
 		} elsif (!$self->peer || ( $self->peer->number // '' ne $event->number )) {
+			# I've added this part when I got in trouble developing this example
+			# It's never called now.
+			# Developing state-based apps under anyevent *is* hard sometimes
 			warn join " ", "PEER MISMATCH:"
 				, "self=", $self->number // '(undef)'
 				, (($self->peer && $self->peer->number) // '(undef)')
@@ -248,6 +265,7 @@ use lib "$Bin/../lib";
 			if ($@);
 	};
 
+	# Send data back to the user.
 	sub reply {
 		my $self = shift;
 		my $msg = join "", map { $_ // '(undef)' } @_;
