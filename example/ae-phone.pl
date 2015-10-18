@@ -63,7 +63,7 @@ use lib "$Bin/../lib";
 	use FSM::Arrow::Util qw(:all);
 
 	use Class::XSAccessor
-		accessors => { number => 'number', call => 'call', fh => 'fh' }
+		accessors => { number => 'number', peer => 'peer', fh => 'fh' }
 		, getters => { id => 'id' };
 
 	my $id;
@@ -75,30 +75,29 @@ use lib "$Bin/../lib";
 	sm_init strict => 1,
 		on_event => sm_on_event_regex (
 			class => "My::Event",
-			regex => qr/(?<type>[a-z]\w*)(\s\D*(?<number>\d+))?/,
+			regex => qr/(?<type>[a-z][a-z0-9]*)(\s\D*(?<number>\d+))?/,
 			undef => 'part',
 		),
 		on_state_change => sub {
-			$_[0]->reply("# state $_[1] => $_[2]");
+			my $q = $_[0]->sm_queue;
+			$_[0]->reply("# state $_[1] => $_[2] via $_, pending @$q");
 		},
 		on_return => sub {
 			my $self = shift;
 			$self->reply( "# OK: @", $self->state, ' ', shift // '(silent)' );
 		},
 		on_error => sub {
-			my $self = shift;
-			warn "Error in handler: $@";
-			$self->reply( "# ERROR: @", $self->state, ' ', $@ );
+			my ($self, $err, $queue) = @_;
+			warn "Error in handler: $err, pending=[@$queue]";
+			$self->reply( "# ERROR: @", $self->state, ' ', $err );
 		};
-	# events so far: join <number>, part;
 
 	sm_state 'offline' => \&on_wrong_event, on_enter => sub {
 		my $self = shift;
 		$self->sign_off;
-		if (my $call = $self->call) {
-			$call->handle_event( $self->mk_event("bye") );
-		};
-		$self->call( undef );
+
+		$self->notify_peer( "bye" );
+		$self->peer( undef );
 		$self->reply ( "!offline" );
 	};
 	sm_transition join => 'online', handler => sub {
@@ -108,14 +107,12 @@ use lib "$Bin/../lib";
 		$self->sign_on($_->number);
 		"Joined as ".$self->number;
 	};
-	sm_transition bye => 'offline';
+	sm_transition mt_bye => 0;
 
 	sm_state 'online' => \&on_wrong_event, on_enter => sub {
 		my $self = shift;
-		if (my $call = $self->call and !$_->is_mt) {
-			$call->handle_event( $self->mk_event("bye") );
-		};
-		$self->call( undef );
+		$self->notify_peer( "bye" ) unless $_->is_mt;
+		$self->peer( undef );
 		$self->reply( "!online ", $self->number );
 	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
@@ -125,67 +122,75 @@ use lib "$Bin/../lib";
 
 		my $peer = $_->peer;
 		if (!$peer) {
-			$self->handle_event("n");
+			$self->handle_event(
+				My::Event->new( type=>'mt_bye', is_mt=>1, number=>$_->number)
+			);
 			return;
 		};
 
-		$self->call( $peer );
-		$self->call->handle_event( $self->mk_event("ring") );
+		$self->peer( $peer );
+		$self->notify_peer( "ring" );
 		"Calling ".$peer->number;
 	};
-	sm_transition ring => 'ringing', handler => sub {
+	sm_transition mt_ring => 'ringing', handler => sub {
 		my $self = shift;
-		$self->call( $_->peer );
+		$self->peer( $_->peer );
 		return;
 	};
 
 	sm_state 'calling' => \&on_wrong_event;
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
-	sm_transition y    => 'busy',    handler => sub { $_->is_mt or die "Cannot self-accept" };
-	sm_transition bye  => 'online',  handler => sub { "Call rejected" };
-	sm_transition ring => 0, handler => sub {
+	sm_transition mt_y => 'busy',    handler => sub { $_->is_mt or die "Cannot self-accept" };
+	sm_transition mt_bye  => 'online',  handler => sub { "Call rejected" };
+	sm_transition mt_ring => 0, handler => sub {
 		my $self = shift;
-		$_->peer and $_->peer->handle_event( $self->mk_event( "bye" ) );
+		$self->notify_peer( bye => $_ );
 	};
 
 	sm_state 'ringing' => \&on_wrong_event, on_enter => sub {
 		$_[0]->reply( "!ringing ", $_->number, ", accept? (y/n)" );
 	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
-	sm_transition n    => 'online',  handler => sub {
-		my $self = shift;
-		my $peer = $self->get_user( $_->number );
-		$peer and $peer->handle_event( $self->mk_event( "bye" ) );
-		"Hangup";
-	};
+	sm_transition n    => 'online',  handler => sub { "Hangup"; };
+	sm_transition mt_bye => 'online', handler => sub { "Peer hangup" };
 	sm_transition y    => 'busy',    handler => sub {
 		my $self = shift;
-		$self->call->handle_event( $self->mk_event( "y" ) );
+		$self->notify_peer( "y" );
 		return;
 	};
-	sm_transition ring => 0,         handler => sub {
+	sm_transition mt_ring => 0,         handler => sub {
 		my $self = shift;
-		$_->peer and $_->peer->handle_event( $self->mk_event("n") );
+		$self->notify_peer( bye => $_ );
 	};
 
 	sm_state 'busy' => \&on_wrong_event, on_enter => sub {
-		$_[0]->reply( "!busy ", $_[0]->call ? $_[0]->call->number : "(...)");
+		$_[0]->reply( "!busy ", $_[0]->peer ? $_[0]->peer->number : "(...)");
 	};
 	sm_transition part => 'offline', handler => sub { "Gone offline" };
 	sm_transition bye  => 'online',  handler => sub { "Hangup" };
-	sm_transition ring => 0,         handler => sub {
+	sm_transition mt_bye  => 'online',  handler => sub { "Peer hangup" };
+	sm_transition mt_ring => 0,         handler => sub {
 		my $self = shift;
-		$_->peer and $_->peer->handle_event( $self->mk_event("n") );
+		$self->notify_peer( bye => $_ );
 	};
 
 	# Self check state definitions for correctness
 	sm_validate;
 
 	# Simplify sending events to peer.
-	sub mk_event {
-		my ($self, $type) = @_;
-		return My::Event->new(
-			type => $type, number => $self->number, is_mt => 1 );
+	sub notify_peer {
+		my ($self, $str, $event) = @_;
+
+		my $peer = $event ? $event->peer : $self->peer;
+		return unless $peer;
+
+		my $ev = My::Event->new(
+			type   => "mt_$str",
+			number => $self->number,
+			is_mt  => 1,
+		);
+
+		return $peer->handle_event( $ev );
 	};
 
 	sub on_wrong_event {
@@ -196,9 +201,13 @@ use lib "$Bin/../lib";
 			$self->reply($msg);
 			$self->reply("!".$self->state);
 			return;
-		} else {
-			die $msg;
+		} elsif (!$self->peer || ( $self->peer->number // '' ne $event->number )) {
+			warn join " ", "PEER MISMATCH:"
+				, "self=", $self->number // '(undef)'
+				, (($self->peer && $self->peer->number) // '(undef)')
+				, '!=', $event ;
 		};
+		die $msg;
 	};
 
 	# Some primitive data storage. Imagine a DB here!
