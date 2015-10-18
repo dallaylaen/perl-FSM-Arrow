@@ -31,6 +31,7 @@ my $counter = 0;
 		online  => [ "part", ("dial Y") x 99, ],
 		ringing => [ "n", ("y") x 9 ],
 		busy    => [ "bye" ],
+		reset   => [ "part" ],
 	);
 
 	sm_state one_and_only => sub {
@@ -39,7 +40,7 @@ my $counter = 0;
 
 			/\#\s*ERROR/ and print "[".$self->number."]$_\n"
 				if $VERBOSE;
-			/\!\s*(offline|online|ringing|busy)/ or return;
+			/\!\s*(offline|online|ringing|busy|reset)/ or return;
 
 			my $state = $1;
 
@@ -83,6 +84,7 @@ my %uniq;
 
 foreach (@num) {
 	my $machine = My::Phone->new(number => $_);
+	my $reset_timer;
 	my $handle = AnyEvent::Handle->new(
 		connect  =>  [ localhost => $port ],
 		on_error => sub {
@@ -102,7 +104,12 @@ foreach (@num) {
 	die "Failed to connect to $port: $!"
 		unless $handle;
 	$machine->{fh} = $handle; # this leaks. Who cares? It's a test script
-	$machine->handle_event( "@ offline" );
+#	$reset_timer = AnyEvent->timer( after => 0.01, interval => 0.01, cb => sub {
+#		warn "RESET ".$machine->number;
+#		$machine->handle_event( "!reset" );
+#		return $reset_timer;
+#	});
+	$machine->handle_event( "!offline" );
 };
 
 my $cv = AnyEvent->condvar;
