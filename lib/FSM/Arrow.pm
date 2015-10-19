@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0702;
+our $VERSION = 0.070301;
 
 =head1 DESCRIPTION
 
@@ -447,7 +447,8 @@ sub _sm_init_schema {
 		# Now magic - alter target package
 		no strict 'refs';         ## no critic (ProhibitNoStrict)
 
-		push @{ $caller.'::'.'ISA' }, 'FSM::Arrow::Instance';
+		push @{ $caller.'::'.'ISA' }, 'FSM::Arrow::Instance'
+			unless $caller->isa('FSM::Arrow::Instance');
 		*{ $caller.'::'.'sm_schema_default' } = $sm_schema_default;
 
 		$sm;
@@ -624,12 +625,14 @@ sub clone {
 };
 
 # Clone routine.
-# Clone hashes, leave everything else (objects, subs) as is
+# Clone arrays & hashes, leave everything else (objects, subs) as is
 # Storable::dclone cannot into subs
 # TODO Performance sucks, but do we need better?
 sub _deep_copy {
-	my $hash = shift;
-	return ref $hash eq 'HASH' ? { map { _deep_copy($_) } %$hash } : $hash;
+	my $data = shift;
+	return ref $data eq 'HASH'  ? { map { _deep_copy($_) } %$data }
+		:  ref $data eq 'ARRAY' ? [ map { _deep_copy($_) } @$data ]
+		:  $data;
 };
 
 =head3 add_state( 'name' => HANDLER($instance, $event), %options )
@@ -852,12 +855,17 @@ sub handle_event {
 	};
 
 	$instance->sm_queue( \@_ );
+
+	# make a linked list - try to optimize a bit
+	our @trace;
+	local @trace = (@trace, [ $self, $instance, undef, \@_ ] );
 	my $ret;
 	# we need to restore queue on failure, so eval the whole thing...
 	my $success = eval {
 		my $on_return = $self->{on_return};
 		while (@_) {
 			local $_ = shift;
+			$trace[-1][2] = $_;
 
 			my $old_state = $instance->state;
 			my $new_state;
@@ -1033,6 +1041,70 @@ sub pretty_print {
 	} map {
 		$self->get_state( $_ );
 	} @states;
+};
+
+=head3 stack_trace
+
+B<EXPERIMENTAL>
+
+Static method (because multiple machine schemas may be active).
+
+Returns the calling sequence of handle_event with some detail,
+omitting any other calls (use Carp::longmess or other dev tool for that).
+
+Stack is returned as arrayref.
+The format is
+C<[ $machine, $instance, $current_event, [ @pending_events ] ], ...>
+The earliest call is at the beginning, and the deepest at the end.
+
+B<NOTE> Data is copied over, but still blessed objects are referenced as is.
+Be careful.
+This may change in the future.
+
+=cut
+
+sub stack_trace {
+	my $class = shift; # unused
+
+	our @trace;
+	return _deep_copy( \@trace );
+};
+
+=head3 longmess ( $msg )
+
+B<EXPERIMENTAL>
+
+Pretty-print whatever is returned by stack_trace.
+
+The format is
+
+    $message in FSM::Arrow
+        at $machine_id/$instance_address:$state->handle_event($event | ...)
+
+But may change later.
+
+=cut
+
+sub longmess {
+	my ($class, $message) = @_;
+
+	$message //= '(here)';
+	$message .= " in $class";
+
+	my $data = $class->stack_trace;
+	my @pretty;
+
+	foreach my $level (@$data) {
+		my ($sm, $inst, $ev, $pending) = @$level;
+		my $machine  = $sm->id;
+		my $instance = "$inst:".$inst->state; # TODO sm_id OR to_string
+		($ev, my @tail)  = map { ref $_ ? $_->type : $_ } $ev, @$pending;
+		my $tail_print = @tail ? " | @tail" : "";
+
+		push @pretty, "at $machine/$instance\->handle_event( $ev$tail_print )";
+	};
+
+	return (join "\n\t", $message, @pretty)."\n"
 };
 
 =head2 GETTERS

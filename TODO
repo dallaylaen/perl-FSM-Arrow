@@ -2,6 +2,14 @@ ROADMAP (future version, change required for that version)
 
 WISHLIST (past version, change that was suggested during that version)
 * UP NEXT
+0.04	TST Expect example (run external program, control execution flow,
+		enter passwd)
+0.07	API Add FSM::Arrow::AE::Handle - base class/trait for async IO
+0.07	DEV Debugging primitives for showing "stack trace":
+		event(type, ...); machine (schema, state, ...); stack of all machines
+		in use at given moment
+0.07	API State machine instance id (sm_id?)
+0.07	API State machine instance and event to_string & "" overload
 
 * MODULES HIGH
 0.03	API state redefine properties w/o changing sub ( keep => 1 )
@@ -12,9 +20,6 @@ WISHLIST (past version, change that was suggested during that version)
 0.06	API sm_transition_from (name?) - add transition to non-current state
 0.06	API stateless events - don't depend on state, don't trigger state change
 0.07	API Determine if there are more events to come (sm_pending? has_queue?)
-0.07	DEV Debugging primitives for showing "stack trace":
-		event(type, ...); machine (schema, state, ...); stack of all machines
-		in use at given moment
 0.07	API Don't rethrow after on_error
 
 * MODULES LOW
@@ -26,17 +31,14 @@ WISHLIST (past version, change that was suggested during that version)
 0.06	API rename Instance methods (handle_event, is_final, accepting) to sm_*
 0.06	DEV Add typed transitions to pretty-print
 0.07	API sm_init engine => [ Moose|Class::StateMachine|fields|none|auto ]
-0.07	API Short circuit transitions ( via unshift sm_queue )
-0.07	API State machine instance id (sm_id?)
-0.07	API State machine instance and event to_string & "" overload
+0.07	API Short circuit transitions ( via unshift sm_queue ) (sm_prepend?)
+0.07	API queueless fast handle?
 
 * EXAMPLES
 0.03	TST ad-hoc parser example (aka ini file)
 0.03 	TST push-down parser example (JSON?)
 0.03	TST Add distributed connected machines example.
 0.03	TST Add improved PSGI example to show inheritance power.
-0.04	TST Expect example (run external program, control execution flow,
-		enter passwd)
 0.04	TST nested machine example - low-level machine assembling events
 		for high-level one
 0.04	TST inherited machine example
