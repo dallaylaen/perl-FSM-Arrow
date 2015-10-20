@@ -28,7 +28,7 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 
 =cut
 
-our $VERSION = 0.07;
+our $VERSION = 0.0701;
 
 use Carp;
 our @CARP_NOT = qw(FSM::Arrow FSM::Arrow::Instance);
@@ -43,6 +43,9 @@ if ($can_xs) {
 		getters => { type => 'type', raw => 'raw', },
 	);
 };
+
+use overload '""' => 'to_string';
+use Scalar::Util qw(refaddr);
 
 =head1 METHODS
 
@@ -89,6 +92,28 @@ Returns event's raw data (if specified).
 
 sub raw {
 	return $_[0]->{raw};
+};
+
+=head3 to_string
+
+Returns human-readable, unique event identifier for debugging purposes.
+
+This default method is guaranteed to return at least event type,
+and to be human-readable.
+One may want to redefine it in their application.
+
+The current format is "ref/refaddr/type", but it may change inthe future.
+DO NOT rely on pretty-print format.
+
+Optional args may be given, they will be appended to string,
+so that one can call C<$self-\>SUPER::to_string( "foo=1", "bar=2" );>
+in redefined method if needed.
+
+=cut
+
+sub to_string {
+	my $self = shift;
+	return join '/', ref $self, refaddr $self, $self->type, @_;
 };
 
 1;

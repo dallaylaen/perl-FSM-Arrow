@@ -15,7 +15,7 @@ $sm_schema->add_state( second => sub {} );
 
 my $machine = $sm_schema->spawn;
 
-like ( $sm_schema->id, qr(FSM::Arrow), "id present");
+like ( $sm_schema->to_string, qr(FSM::Arrow), "id present");
 
 is( ref $machine, 'FSM::Arrow::Instance', "Machine instance spawn ok");
 is( $machine->state, 'empty', "first state = initial state");

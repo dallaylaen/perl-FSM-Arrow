@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.070301;
+our $VERSION = 0.0704;
 
 =head1 DESCRIPTION
 
@@ -118,6 +118,7 @@ See C<sm_state> below.
 ## no critic (RequireArgUnpacking) # we'll use A LOT of @_, sorry
 use Carp;
 use Scalar::Util qw(blessed);
+
 use base 'Exporter';
 my @CLASS = qw( sm_init sm_state sm_transition sm_validate );
 our @EXPORT_OK = @CLASS;
@@ -550,8 +551,6 @@ Constructor.
 
 =over
 
-=item * id - This machine id. If unset, a sane default is provided.
-
 =item * parent - if set, clone machine instead.
 
 =item * instance_class - if set, use that class for instances (see spawn).
@@ -569,6 +568,7 @@ my %new_args;
 $new_args{$_}++ for qw( id instance_class initial_state strict
 	on_event on_state_change on_return on_error );
 
+my $id;
 sub new {
 	my ($class, %args) = @_;
 
@@ -590,7 +590,9 @@ sub new {
 		for keys %new_args;
 
 	# Must do this AFTER self is defined
-	$self->{id} ||= $self->generate_id;
+	$self->{short_id} = ++$id;
+	$self->{long_id}  = join '/'
+		, ref $self, $self->instance_class, $self->{short_id};
 	return $self;
 };
 
@@ -932,7 +934,7 @@ sub handle_event {
 }; # end sub handle_event
 
 sub _croak {
-	croak $_[0]->id.": $_[1]";
+	croak $_[0]->to_string.": $_[1]";
 };
 
 =head2 DEVELOPMENT/INSPECTION PRIMITIVES
@@ -1088,7 +1090,7 @@ But may change later.
 sub longmess {
 	my ($class, $message) = @_;
 
-	$message //= '(here)';
+	$message = '(here)' unless defined $message;
 	$message .= " in $class";
 
 	my $data = $class->stack_trace;
@@ -1096,12 +1098,14 @@ sub longmess {
 
 	foreach my $level (@$data) {
 		my ($sm, $inst, $ev, $pending) = @$level;
-		my $machine  = $sm->id;
-		my $instance = "$inst:".$inst->state; # TODO sm_id OR to_string
-		($ev, my @tail)  = map { ref $_ ? $_->type : $_ } $ev, @$pending;
-		my $tail_print = @tail ? " | @tail" : "";
+		my $sm_id  = $sm->to_string;
+		my $inst_id = $inst->sm_to_string;
+		($ev, my @tail_array)  = map {
+			blessed $_ && $_->can('to_string') ? $_->to_string : $_
+		} $ev, @$pending;
+		my $tail = @tail_array ? " | @tail_array" : '';
 
-		push @pretty, "at $machine/$instance\->handle_event( $ev$tail_print )";
+		push @pretty, "at $sm_id as $inst_id\->handle_event( $ev$tail )";
 	};
 
 	return (join "\n\t", $message, @pretty)."\n"
@@ -1109,16 +1113,14 @@ sub longmess {
 
 =head2 GETTERS
 
-=head3 id()
+=head3 to_string()
 
-Returns state machine schema unique identifier.
-
-Unless given explicitly to new(), defaults to generate_id() output.
+Returns human-readable, unique machine identifier for debugging purposes.
 
 =cut
 
-sub id {
-	return $_[0]->{id};
+sub to_string {
+	return $_[0]->{long_id};
 };
 
 =head3 initial_state()
@@ -1186,24 +1188,6 @@ sub accepting {
 
 =head2 INTERNAL METHODS
 
-=head3 generate_id()
-
-Returns an unique id containing at least schema and instance class refs.
-
-B<NOTE> This is normally NOT called directly.
-
-=cut
-
-my $id;
-sub generate_id {
-	my $self = shift;
-
-	my $type = ref $self;
-	my $instance = $self->instance_class;
-
-	return "$type<$instance>#".++$id;
-};
-
 =head3 last_added_state()
 
 Returns last state added via sm_state or add_state.
@@ -1214,6 +1198,17 @@ B<NOTE> This is normally NOT called directly.
 
 sub last_added_state {
 	return $_[0]->{last_added_state};
+};
+
+=head3 short_id()
+
+Returns state machine schema unique number.
+Used by Instance class to print which machine it comes from.
+
+=cut
+
+sub short_id {
+	return $_[0]->{short_id};
 };
 
 =head1 ENVIRONMENT VARIABLES

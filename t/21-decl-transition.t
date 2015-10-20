@@ -105,8 +105,21 @@ my $clone = $orig->clone;
 # Remove known difference
 delete $orig->{last_added_state};
 delete $orig->{state_lock};
-delete $orig->{id};
-delete $clone->{id};
+
+# Remove ids
+my ($id1, $id2);
+$id1 = delete $orig->{short_id};
+$id2 = delete $clone->{short_id};
+ok($id1, "1 id present");
+ok($id2, "2 id present");
+isnt( $id1, $id2, "ids differ" );
+
+$id1 = delete $orig->{long_id};
+$id2 = delete $clone->{long_id};
+ok($id1, "1 id present");
+ok($id2, "2 id present");
+isnt( $id1, $id2, "ids differ" );
+
 
 # Compare!
 is_deeply( $clone, $orig, "Clone still works" )
@@ -136,9 +149,10 @@ eval { $sm->handle_event( make_event( 2 ) ) };
 like $@, qr(No.*allowed), "No real transition";
 
 # 0 returned, so on_enter was NOT followed
-eval { $sm->handle_event( make_event( 1 ) ) };
+$ev = make_event(1);
+eval { $sm->handle_event( $ev ) };
 is ($@, '', "Empty transition ok" );
-is_deeply ( \@follow, [ make_event(1) ], "handler cb worked" );
+is_deeply ( \@follow, [ $ev ], "handler cb worked" );
 
 done_testing;
 

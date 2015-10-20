@@ -37,7 +37,7 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 =cut
 
 ## no critic (RequireArgUnpacking)
-our $VERSION = 0.07;
+our $VERSION = 0.0701;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -45,6 +45,7 @@ use Carp;
 our @CARP_NOT = qw(FSM::Arrow);
 
 use fields qw(state sm_schema sm_queue);
+use Scalar::Util qw(refaddr);
 
 # Use XS Accessors if available, for speed & glory
 # Normal accessors are still present and work the same (but slower).
@@ -243,6 +244,29 @@ Dies unless declarative interface was indeed used.
 sub sm_schema_default {
 	croak "FSM::Arrow::Instance: 'sm_schema' argument missing in constructor"
 		." and declarative API not in use";
+};
+
+=head3 sm_to_string
+
+Returns human-readable, unique machine identifier for debugging purposes.
+
+This default implementation is guaranteed to contain at least machine class,
+current state, and some unique string.
+
+Current format is "ref/sm_number/refaddr/state",
+but this may change in the future.
+
+Optional args may be given, they will be appended to string,
+so that one can call C<$self-\>SUPER::sm_to_string( "foo=1", "bar=2" );>
+in redefining this method if needed.
+
+=cut
+
+# TODO or should we cache it?
+sub sm_to_string {
+	my $self = shift;
+	return join '/', ref $self, $self->sm_schema->short_id,
+		refaddr $self, $self->state, @_;
 };
 
 1;
