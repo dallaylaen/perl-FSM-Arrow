@@ -28,7 +28,7 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 
 =cut
 
-our $VERSION = 0.0701;
+our $VERSION = 0.0702;
 
 use Carp;
 our @CARP_NOT = qw(FSM::Arrow FSM::Arrow::Instance);
@@ -44,8 +44,10 @@ if ($can_xs) {
 	);
 };
 
-use overload '""' => 'to_string';
 use Scalar::Util qw(refaddr);
+use overload '""' => sub { $_[0]->to_string };
+	# q{""} adds extra (undef, "") args which we do not want,
+	# hence not just "to_string"
 
 =head1 METHODS
 

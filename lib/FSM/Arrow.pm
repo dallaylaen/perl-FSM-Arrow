@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0705;
+our $VERSION = 0.0706;
 
 =head1 DESCRIPTION
 
@@ -1096,10 +1096,14 @@ sub longmess {
 	my $data = $class->stack_trace;
 	my @pretty;
 
+	# Generally, stringify everything. Events MAY be undefs!
 	foreach my $level (@$data) {
 		my ($inst, $ev, $pending) = @$level;
 		my $inst_id = $inst->sm_to_string;
-		my $tail = @$pending ? " | @$pending" : '';
+		($ev, my @tail_real) = map {
+			defined $_ ? "'$_'" : '(undef)';
+		} $ev, @$pending;
+		my $tail = @tail_real ? " | @tail_real" : '';
 
 		push @pretty, "at $inst_id\->handle_event( $ev$tail )";
 	};
