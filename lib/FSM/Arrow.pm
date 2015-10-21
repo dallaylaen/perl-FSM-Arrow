@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0704;
+our $VERSION = 0.0705;
 
 =head1 DESCRIPTION
 
@@ -860,14 +860,14 @@ sub handle_event {
 
 	# make a linked list - try to optimize a bit
 	our @trace;
-	local @trace = (@trace, [ $self, $instance, undef, \@_ ] );
+	local @trace = (@trace, [ $instance, undef, \@_ ] );
 	my $ret;
 	# we need to restore queue on failure, so eval the whole thing...
 	my $success = eval {
 		my $on_return = $self->{on_return};
 		while (@_) {
 			local $_ = shift;
-			$trace[-1][2] = $_;
+			$trace[-1][1] = $_;
 
 			my $old_state = $instance->state;
 			my $new_state;
@@ -1097,15 +1097,11 @@ sub longmess {
 	my @pretty;
 
 	foreach my $level (@$data) {
-		my ($sm, $inst, $ev, $pending) = @$level;
-		my $sm_id  = $sm->to_string;
+		my ($inst, $ev, $pending) = @$level;
 		my $inst_id = $inst->sm_to_string;
-		($ev, my @tail_array)  = map {
-			blessed $_ && $_->can('to_string') ? $_->to_string : $_
-		} $ev, @$pending;
-		my $tail = @tail_array ? " | @tail_array" : '';
+		my $tail = @$pending ? " | @$pending" : '';
 
-		push @pretty, "at $sm_id as $inst_id\->handle_event( $ev$tail )";
+		push @pretty, "at $inst_id\->handle_event( $ev$tail )";
 	};
 
 	return (join "\n\t", $message, @pretty)."\n"
