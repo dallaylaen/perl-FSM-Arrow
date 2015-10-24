@@ -43,9 +43,7 @@ done
 $FAIL"
 
 # make sure tests pass
-perl Makefile.PL || die "Makefile.PL failed"
-make || die "Make failed"
-make test || die "Tests fail, use TODO or fix"
+prove -Ilib t  || die "Tests fail, use TODO or fix"
 prove -Ilib xt || die "Author tests fail, fix"
 
 # make sure MANIFEST is consistent
