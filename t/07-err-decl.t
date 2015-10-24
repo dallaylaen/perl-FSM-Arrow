@@ -27,4 +27,15 @@ eval {
 like $@, qr(FSM::Arrow), "sm_init rejects non-SM parent class";
 note $@;
 
+eval {
+	package My::SM::Foo2;
+	use FSM::Arrow qw(:class);
+
+	sm_state 'one';
+	sm_transition [ 'xxx', 'yyy' ] => 2;
+	sm_transition [ 'yyy', 'zzz' ] => 3;
+};
+like $@, qr(FSM::Arrow.*one.*yyy), "sm_transition rejects known event types";
+note $@;
+
 done_testing;

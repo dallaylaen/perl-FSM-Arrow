@@ -9,7 +9,6 @@ WISHLIST (past version, change that was suggested during that version)
 * MODULES HIGH
 0.03	API state redefine properties w/o changing sub ( keep => 1 )
 0.03	DOC More rationale & basic SM discussion (?)
-0.05	API sm_transition locking (like states) & uniqueness check
 0.06	DOC explain reenterability
 0.06	API strict vs inheritance -rule out
 0.06	API sm_transition_from (name?) - add transition to non-current state

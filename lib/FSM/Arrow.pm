@@ -10,7 +10,7 @@ FSM::Arrow - Declarative inheritable generic state machine.
 
 =cut
 
-our $VERSION = 0.0706;
+our $VERSION = 0.0707;
 
 =head1 DESCRIPTION
 
@@ -359,6 +359,7 @@ if needed.
 
 'event_type' must be a string or array of strings.
 Unlike for states, empty and 0 are allowed.
+Same event type may NOT appear twice in transitions from the same state.
 
 'new_state' must be either a (possibly future) state name, or false.
 False value means that transition is looped, and callbacks are ignored.
@@ -780,7 +781,11 @@ sub add_transition {
 
 	$state->{next} and $to and $state->{next}{$to} = 1;
 
-	$state->{event_types}{$_} = $to for @$events;
+	foreach (@$events) {
+		$self->_croak("add_transition: state $from already handles event $_")
+			if exists $state->{event_types}{$_};
+		$state->{event_types}{$_} = $to;
+	};
 
 	if (my $handler = $args{handler}) {
 		$state->{event_handler}{$_} = $handler for @$events;
