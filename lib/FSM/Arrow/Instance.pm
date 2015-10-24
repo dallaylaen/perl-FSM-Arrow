@@ -37,7 +37,7 @@ This can be suppressed by setting FSM_ARROW_NOXS=1 environment variable.
 =cut
 
 ## no critic (RequireArgUnpacking)
-our $VERSION = 0.0701;
+our $VERSION = 0.0702;
 
 # If event handler ever dies, don't end up blaming Arrow.
 # Blame caller of handle_event instead.
@@ -91,7 +91,14 @@ sub new {
 
 Process incoming event via handler correspondent to the current state.
 
-Returns value is determined by handler.
+If one event is processed, returns whatever was the second return value
+of the state/transition handler.
+If several events are processed, returns the I<last> such value.
+If another event is being processed already, appends events to the queue
+and returns nothing.
+
+One might want to use on_return callback instead of return value
+in case processing multiple events and/or recursion is anticipated.
 
 B<NOTE> The state MAY be changed after this call.
 
@@ -101,6 +108,24 @@ sub handle_event {
 	# Delegate the hard work to FSM::Arrow
 	# so that all concerted code modifications are local to that file.
 	return $_[0]->sm_schema->handle_event(@_);
+};
+
+=head2 sm_prepend_event( $event, ... )
+
+Handle given event(s) immediately, before any other pending events.
+
+Return value pattern follows that of C<handle_event>.
+
+=cut
+
+sub sm_prepend_event {
+	my $self = shift;
+	if (my $queue = $self->sm_queue) {
+		unshift @$queue, @_;
+		return;
+	} else {
+		return $self->handle_event(@_);
+	};
 };
 
 =head2 state()

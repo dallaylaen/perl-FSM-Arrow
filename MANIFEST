@@ -56,3 +56,4 @@ t/29-decl-reentrable.t
 example/ae-client-phone.pl
 t/30-stack-trace.t
 t/31-id-string.t
+t/33-prepend-event.t
